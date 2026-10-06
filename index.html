@@ -1,1 +1,139 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ordini Mensa</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f7d4f">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ordini Mensa">
 
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mu:#666;--ac:#2f7d4f;--bd:#ddd;--cd:#f4f6f4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#161a17;--fg:#eee;--mu:#999;--bd:#333;--cd:#202621}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif;padding:12px}
+h1{font-size:20px;margin:0 0 10px}h2{font-size:15px;margin:14px 0 4px;color:var(--ac)}
+label{display:block;font-size:13px;color:var(--mu);margin-top:8px}
+select,input{width:100%;box-sizing:border-box;font-size:16px;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--cd);color:var(--fg)}
+.r{display:flex;gap:8px}.r>div{flex:1}
+table{width:100%;border-collapse:collapse}td{padding:6px 4px;border-bottom:1px solid var(--bd)}td:last-child{text-align:right;font-weight:600;white-space:nowrap}
+.n{font-size:13px;color:var(--mu);margin:6px 0}
+button{margin-top:10px;width:100%;padding:10px;font-size:16px;border:0;border-radius:8px;background:var(--ac);color:#fff}
+</style></head><body>
+<h1>Ordini mensa</h1>
+<label>Ordine</label>
+<select id="o">
+<option value="m3">Merce – mercoledì (copre gio + ven)</option>
+<option value="m5">Merce – venerdì (copre lun + mar + mer dopo)</option>
+<option value="o1">Ortofrutta – lunedì (copre mar + mer + gio)</option>
+<option value="o4">Ortofrutta – giovedì (copre ven + lun dopo)</option></select>
+<label>Settimana del menù in cui fai l'ordine</label>
+<select id="w"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+<div class="r"><div><label>Bambini</label><input id="nb" type="number" value="240"></div>
+<div><label>Adulti lun/mar/gio</label><input id="n1" type="number" value="80"></div>
+<div><label>Adulti mer/ven</label><input id="n2" type="number" value="20"></div></div>
+<div id="out"></div>
+<button onclick="copia()">Copia lista</button>
+<details style="margin-top:14px"><summary><b>Grammature (g a porzione)</b></summary>
+<p class="n">Scrivi il tuo valore per ingrediente: sostituisce quello predefinito (in grigio) ovunque compaia. Vuoto = predefinito. Si salva sul telefono.</p>
+<div id="gr"></div></details>
+<script>
+// grammi per porzione. cat: s=secco/pane, f=fresco, g=surgelato, o=ortofrutta
+const B=["Pane bianco","s",40],I=["Pane integrale","s",40],F=["Frutta","o",120],V=["Verdura cruda","o",80],A=["Pane bianco","s",50],S=["Passata","s",40];
+const D={1:{
+b:[
+[["Pasta","s",70],["Passata","s",40],["Latte (besciamella)","f",20],["Uova","f",50],["Erbette","g",100],["Pane bianco","s",40],["Frutta","o",120]],
+[["Riso","s",60],["Parmigiano","f",5],["Verdure e piselli (tortino)","g",100],["Uova","f",20],["Carote","o",50],["Pane integrale","s",40],["Frutta","o",120]],
+[["Pasta","s",70],["Platessa","g",100],["Insalata verde","o",50],["Pane bianco","s",40],["Yogurt alla frutta","f",125]],
+[["Farro","s",30],["Verdure per vellutata","g",100],["Legumi","s",20],["Pollo","f",80],["Patate","o",150],["Pane integrale","s",40],["Frutta","o",120]],
+[["Pasta integrale","s",70],["Passata","s",40],["Peperoni","g",50],["Provolone dolce","f",50],["Fagiolini","g",100],["Pane bianco","s",40],["Frutta","o",120]]],
+a:[
+[["Pasta","s",100],["Olio EVO","s",10],["Uova","f",30],["Carciofi","g",30],["Suino (braciola)","f",75],["Peperoni","g",150],["Verdura cruda","o",80],["Pane bianco","s",50]],
+[["Pasta","s",50],["Pizza margherita","f",100],["Passata","s",25],["Hamburger","f",60],["Formaggio","f",10],["Tonno","s",25],["Fagioli cannellini","s",25],["Insalata verde","o",25],["Patate","o",200],["Verdura cruda","o",80],["Pane bianco","s",50]],
+[["Riso","s",80],["Strudel ai funghi","f",150],["Fagiolini","g",150],["Verdura cruda","o",80],["Pane bianco","s",50]],
+[["Pasta","s",100],["Pomodorini","o",30],["Guanciale","f",12],["Uova","f",12],["Totani","g",75],["Tacchino","f",60],["Tonno","s",15],["Zucchine","g",150],["Verdura cruda","o",80],["Pane bianco","s",50]],
+[["Pasta","s",100],["Salmone","g",20],["Polpette di legumi","s",75],["Misto verdure","g",150],["Verdura cruda","o",80],["Pane bianco","s",50]]]},
+2:{
+b:[
+[["Riso","s",60],["Barbabietola","o",50],["Mozzarella","f",60],["Pomodori","o",100],B,F],
+[["Pasta","s",70],S,["Crocchette patate e ceci","f",120],["Insalata","o",50],["Mais","s",30],I,F],
+[["Lasagne bolognese","f",150],["Fagiolini","g",80],["Carote","o",40],I,["Gelato","f",80]],
+[["Orzo","s",30],["Carote","o",100],["Ceci","s",20],["Tacchino","f",80],["Patate","o",150],I,F],
+[["Pasta integrale","s",70],["Pesto","f",20],["Merluzzo","g",100],["Carote","o",50],B,F]],
+a:[
+[["Pasta","s",50],["Riso","s",40],["Formaggio","f",20],["Merluzzo","g",75],["Suino (arrosto)","f",75],["Carote","o",150],V,A],
+[["Riso","s",50],["Pasta","s",50],["Pesto","f",15],["Patate","o",100],["Tacchino","f",100],["Spinaci","g",150],V,A],
+[["Lasagne bolognese","f",250],["Fagiolini","g",100],["Carote","o",50],V,A],
+[["Pasta","s",50],["Peperoni","g",30],["Riso","s",40],["Radicchio","o",20],["Gorgonzola","f",15],["Pesce spada","g",75],["Pollo","f",75],["Patate","o",150],V,A],
+[["Riso","s",80],["Zucchine","g",60],["Melanzane","o",100],["Mozzarella","f",40],["Finocchi","o",150],V,A]]},
+3:{
+b:[
+[["Pasta","s",70],["Pesce per ragù","g",40],S,["Uova","f",50],["Fagiolini","g",100],B,F],
+[["Pizza margherita","f",120],["Insalata","o",50],["Pomodori","o",100],["Cioccolato fondente","s",25]],
+[["Riso","s",60],["Parmigiano","f",10],["Polpette di pesce","g",100],["Misto verdure","g",100],B,F],
+[["Pasta","s",70],["Zucchine","g",50],["Cotoletta di pollo","f",80],["Pomodori","o",100],I,F],
+[["Pasta integrale","s",70],S,["Crocchette patate e piselli","f",120],["Carote","o",50],I,F]],
+a:[
+[["Pasta","s",50],["Tonno","s",20],["Riso","s",40],["Salsiccia","f",40],["Speck","f",20],["Formaggio","f",20],["Platessa","g",75],["Zucchine","g",150],V,A],
+[["Gnocchi","f",100],["Pizza margherita","f",100],["Tacchino","f",60],["Tonno","s",15],["Verdure ripiene","g",100],["Carote e piselli","g",150],V,A],
+[["Pasta","s",100],["Misto verdure","g",40],["Merluzzo","g",120],["Fagiolini","g",150],V,A],
+[["Pasta","s",100],["Guanciale","f",15],["Zucchine","g",30],["Gamberetti","g",20],["Cotoletta di pollo","f",75],["Mozzarella","f",30],["Fagioli cannellini","s",25],["Patate","o",150],V,A],
+[["Pasta","s",100],S,["Tortino radicchio e scamorza","f",150],["Misto verdure","g",150],V,A]]},
+4:{
+b:[
+[["Pasta","s",70],["Lenticchie","s",20],S,["Stracchino","f",50],["Spinaci","g",100],B,F],
+[["Pasta","s",70],["Latte","f",20],["Uova","f",50],["Carote","o",50],I,F],
+[["Ravioli di magro","f",120],["Totani","g",100],["Insalata","o",50],["Mais","s",30],I,["Torta","s",80]],
+[["Riso","s",60],["Misto verdure","g",100],["Prosciutto cotto","f",50],["Pomodori","o",100],["Fagioli cannellini","s",30],I,F],
+[["Pasta integrale","s",70],S,["Melanzane","o",50],["Platessa","g",100],["Fagiolini","g",100],B,F]],
+a:[
+[["Pasta","s",50],["Riso","s",40],["Melanzane","o",40],["Radicchio","o",25],["Taleggio","f",20],["Suino (braciola)","f",75],["Mozzarella","f",40],["Insalata","o",40],["Peperoni","g",150],V,A],
+[["Pasta","s",100],["Tonno","s",20],["Pomodorini","o",30],["Verdure ripiene","g",100],["Speck","f",40],["Fagiolini","g",150],V,A],
+[["Pasta","s",100],["Zucchine","g",40],["Erbazzone","f",150],["Insalata","o",40],["Mais","s",15],V,A],
+[["Riso","s",50],["Pasta","s",50],["Salmone","g",25],["Pollo","f",150],["Mozzarella","f",40],["Patate","o",150],V,A],
+[["Ravioli di magro","f",120],["Totani","g",150],["Carote","o",150],V,A]]}};
+const G=["Lun","Mar","Mer","Gio","Ven"],C={s:"Secco e pane",f:"Fresco",g:"Surgelato",o:"Ortofrutta"};
+const P={m3:[[0,3],[0,4]],m5:[[1,0],[1,1],[1,2]],o1:[[0,1],[0,2],[0,3]],o4:[[0,4],[1,0]]};
+// settimana corrente dal calendario (1ª sett. = lun 5/10/2026)
+const sw=Math.floor((Date.now()-new Date(2026,9,5))/6048e5);
+w.value=((sw%4)+4)%4+1;
+let txt="";
+function kg(g){return g>=1000?(g/1000).toFixed(2).replace(".",",")+" kg":Math.round(g)+" g"}
+function run(){
+ const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[];
+ t.forEach(([off,d])=>{
+  const wk=(+w.value-1+off)%4+1,m=D[wk];
+  if(!m){miss.push(G[d]+" (sett. "+wk+")");return}
+  days.push(G[d]+" s."+wk);
+  const na=(d==2||d==4)?+n2.value:+n1.value;
+  [["b",+nb.value],["a",na]].forEach(([k,n])=>m[k][d].forEach(([nm,c,g])=>{
+   if((c=="o")!=oo)return;
+   const ov=+OV[k+"|"+c+"|"+nm];if(ov>0)g=ov;
+   const key=c+"|"+nm;tot[key]=(tot[key]||0)+g*n}))});
+ let h="<p class='n'>Giorni coperti: "+days.join(", ")+"</p>";
+ if(miss.length)h+="<p class='n'>⚠ Menù non ancora inserito: "+miss.join(", ")+"</p>";
+ txt="";
+ Object.keys(C).forEach(c=>{
+  const rows=Object.keys(tot).filter(k=>k[0]==c).sort();
+  if(!rows.length)return;
+  h+="<h2>"+C[c]+"</h2><table>";txt+=C[c].toUpperCase()+"\n";
+  rows.forEach(k=>{const nm=k.slice(2);h+="<tr><td>"+nm+"</td><td>"+kg(tot[k])+"</td></tr>";txt+=nm+": "+kg(tot[k])+"\n"});
+  h+="</table>";txt+="\n"});
+ out.innerHTML=h}
+function copia(){navigator.clipboard&&navigator.clipboard.writeText(txt)}
+let OV={};try{OV=JSON.parse(localStorage.getItem("ov")||"{}")}catch(e){}
+function buildGr(){
+ const s={};
+ for(const x in D)["b","a"].forEach(k=>D[x][k].forEach(d=>d.forEach(([n,c,g])=>{const i=c+"|"+n;s[i]=s[i]||{};s[i][k]=s[i][k]||g})));
+ let h="<table><tr><td></td><td>Bambini</td><td>Adulti</td></tr>";
+ Object.keys(s).sort((x,y)=>x.split("|")[1].localeCompare(y.split("|")[1])).forEach(i=>{
+  const [c,n]=i.split("|");
+  h+="<tr><td>"+n+"</td>"+["b","a"].map(k=>"<td><input type=number inputmode=decimal data-k=\""+k+"|"+c+"|"+n+"\" placeholder=\""+(s[i][k]||"–")+"\" value=\""+(OV[k+"|"+c+"|"+n]||"")+"\"></td>").join("")+"</tr>"});
+ gr.innerHTML=h+"</table>";
+ gr.querySelectorAll("input").forEach(e=>e.oninput=()=>{
+  const v=+e.value;if(v>0)OV[e.dataset.k]=v;else delete OV[e.dataset.k];
+  try{localStorage.setItem("ov",JSON.stringify(OV))}catch(x){}run()})}
+[o,w,nb,n1,n2].forEach(e=>e.oninput=run);buildGr();run();
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script></body></html>
