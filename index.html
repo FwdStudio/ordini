@@ -19,6 +19,7 @@ select,input{width:100%;box-sizing:border-box;font-size:16px;padding:8px;border:
 .r{display:flex;gap:8px}.r>div{flex:1}
 table{width:100%;border-collapse:collapse}td{padding:6px 4px;border-bottom:1px solid var(--bd)}td:last-child{text-align:right;font-weight:600;white-space:nowrap}
 .n{font-size:13px;color:var(--mu);margin:6px 0}
+td input{width:90px}
 button{margin-top:10px;width:100%;padding:10px;font-size:16px;border:0;border-radius:8px;background:var(--ac);color:#fff}
 </style></head><body>
 <h1>Ordini mensa</h1>
@@ -36,7 +37,9 @@ button{margin-top:10px;width:100%;padding:10px;font-size:16px;border:0;border-ra
 <div id="out"></div>
 <button onclick="copia()">Copia lista</button>
 <details style="margin-top:14px"><summary><b>Grammature (g a porzione)</b></summary>
-<p class="n">Scrivi il tuo valore per ingrediente: sostituisce quello predefinito (in grigio) ovunque compaia. Vuoto = predefinito. Si salva sul telefono.</p>
+<p class="n">Scegli settimana e giorno, poi scrivi la grammatura di ogni voce. Il valore predefinito è in grigio; vuoto = predefinito. Si salva sul telefono.</p>
+<div class="r"><div><label>Settimana</label><select id="gw"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+<div><label>Giorno</label><select id="gd"><option value="0">Lunedì</option><option value="1">Martedì</option><option value="2">Mercoledì</option><option value="3">Giovedì</option><option value="4">Venerdì</option></select></div></div>
 <div id="gr"></div></details>
 <script>
 // grammi per porzione. cat: s=secco/pane, f=fresco, g=surgelato, o=ortofrutta
@@ -107,9 +110,9 @@ function run(){
   if(!m){miss.push(G[d]+" (sett. "+wk+")");return}
   days.push(G[d]+" s."+wk);
   const na=(d==2||d==4)?+n2.value:+n1.value;
-  [["b",+nb.value],["a",na]].forEach(([k,n])=>m[k][d].forEach(([nm,c,g])=>{
+  [["b",+nb.value],["a",na]].forEach(([k,n])=>m[k][d].forEach(([nm,c,g],i)=>{
    if((c=="o")!=oo)return;
-   const ov=+OV[k+"|"+c+"|"+nm];if(ov>0)g=ov;
+   const ov=+OV[wk+"|"+k+"|"+d+"|"+i];if(ov>0)g=ov;
    const key=c+"|"+nm;tot[key]=(tot[key]||0)+g*n}))});
  let h="<p class='n'>Giorni coperti: "+days.join(", ")+"</p>";
  if(miss.length)h+="<p class='n'>⚠ Menù non ancora inserito: "+miss.join(", ")+"</p>";
@@ -122,17 +125,18 @@ function run(){
   h+="</table>";txt+="\n"});
  out.innerHTML=h}
 function copia(){navigator.clipboard&&navigator.clipboard.writeText(txt)}
-let OV={};try{OV=JSON.parse(localStorage.getItem("ov")||"{}")}catch(e){}
+let OV={};try{OV=JSON.parse(localStorage.getItem("ov2")||"{}")}catch(e){}
 function buildGr(){
- const s={};
- for(const x in D)["b","a"].forEach(k=>D[x][k].forEach(d=>d.forEach(([n,c,g])=>{const i=c+"|"+n;s[i]=s[i]||{};s[i][k]=s[i][k]||g})));
- let h="<table><tr><td></td><td>Bambini</td><td>Adulti</td></tr>";
- Object.keys(s).sort((x,y)=>x.split("|")[1].localeCompare(y.split("|")[1])).forEach(i=>{
-  const [c,n]=i.split("|");
-  h+="<tr><td>"+n+"</td>"+["b","a"].map(k=>"<td><input type=number inputmode=decimal data-k=\""+k+"|"+c+"|"+n+"\" placeholder=\""+(s[i][k]||"–")+"\" value=\""+(OV[k+"|"+c+"|"+n]||"")+"\"></td>").join("")+"</tr>"});
- gr.innerHTML=h+"</table>";
+ const m=D[gw.value],d=+gd.value;let h="";
+ [["b","Bambini (g a porzione)"],["a","Adulti (g a porzione)"]].forEach(([k,t])=>{
+  h+="<h2>"+t+"</h2><table>";
+  if(!m){h+="<tr><td>Menù non inserito</td></tr>"}else m[k][d].forEach(([n,c,g],i)=>{
+   const key=gw.value+"|"+k+"|"+d+"|"+i;
+   h+="<tr><td>"+n+"</td><td><input type=number inputmode=decimal data-k=\""+key+"\" placeholder=\""+g+"\" value=\""+(OV[key]||"")+"\"></td></tr>"});
+  h+="</table>"});
+ gr.innerHTML=h;
  gr.querySelectorAll("input").forEach(e=>e.oninput=()=>{
   const v=+e.value;if(v>0)OV[e.dataset.k]=v;else delete OV[e.dataset.k];
-  try{localStorage.setItem("ov",JSON.stringify(OV))}catch(x){}run()})}
-[o,w,nb,n1,n2].forEach(e=>e.oninput=run);buildGr();run();
+  try{localStorage.setItem("ov2",JSON.stringify(OV))}catch(x){}run()})}
+[o,w,nb,n1,n2].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;buildGr();run();
 </script></body></html>
