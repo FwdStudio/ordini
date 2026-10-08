@@ -34,6 +34,8 @@ button{margin-top:10px;width:100%;padding:10px;font-size:16px;border:0;border-ra
 <div class="r"><div><label>Bambini</label><input id="nb" type="number" value="240"></div>
 <div><label>Adulti lun/mar/gio</label><input id="n1" type="number" value="80"></div>
 <div><label>Adulti mer/ven</label><input id="n2" type="number" value="20"></div></div>
+<label>Ordina la lista</label>
+<select id="so"><option value="m">Per merceologia</option><option value="a">In ordine alfabetico</option><option value="d">Per giornata</option></select>
 <div id="out"></div>
 <button onclick="copia()">Copia lista</button>
 <details style="margin-top:14px"><summary><b>Grammature (g a porzione)</b></summary>
@@ -104,25 +106,25 @@ w.value=((sw%4)+4)%4+1;
 let txt="";
 function kg(g){return g>=1000?(g/1000).toFixed(2).replace(".",",")+" kg":Math.round(g)+" g"}
 function run(){
- const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[];
+ const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[],byDay=[];
  t.forEach(([off,d])=>{
   const wk=(+w.value-1+off)%4+1,m=D[wk];
   if(!m){miss.push(G[d]+" (sett. "+wk+")");return}
-  days.push(G[d]+" s."+wk);
+  days.push(G[d]+" s."+wk);const dd={};byDay.push([G[d]+" (sett. "+wk+")",dd]);
   const na=(d==2||d==4)?+n2.value:+n1.value;
   [["b",+nb.value],["a",na]].forEach(([k,n])=>m[k][d].forEach(([nm,c,g],i)=>{
    if((c=="o")!=oo)return;
    const ov=+OV[wk+"|"+k+"|"+d+"|"+i];if(ov>0)g=ov;
-   const key=c+"|"+nm;tot[key]=(tot[key]||0)+g*n}))});
+   const key=c+"|"+nm;tot[key]=(tot[key]||0)+g*n;dd[key]=(dd[key]||0)+g*n}))});
  let h="<p class='n'>Giorni coperti: "+days.join(", ")+"</p>";
  if(miss.length)h+="<p class='n'>⚠ Menù non ancora inserito: "+miss.join(", ")+"</p>";
  txt="";
- Object.keys(C).forEach(c=>{
-  const rows=Object.keys(tot).filter(k=>k[0]==c).sort();
-  if(!rows.length)return;
-  h+="<h2>"+C[c]+"</h2><table>";txt+=C[c].toUpperCase()+"\n";
-  rows.forEach(k=>{const nm=k.slice(2);h+="<tr><td>"+nm+"</td><td>"+kg(tot[k])+"</td></tr>";txt+=nm+": "+kg(tot[k])+"\n"});
-  h+="</table>";txt+="\n"});
+ const sec=(tt,ob,ks)=>{if(!ks.length)return;h+="<h2>"+tt+"</h2><table>";txt+=tt.toUpperCase()+"\n";
+  ks.forEach(k=>{const nm=k.slice(2);h+="<tr><td>"+nm+"</td><td>"+kg(ob[k])+"</td></tr>";txt+=nm+": "+kg(ob[k])+"\n"});h+="</table>";txt+="\n"};
+ const al=a=>a.sort((x,y)=>x.slice(2).localeCompare(y.slice(2)));
+ if(so.value=="m")Object.keys(C).forEach(c=>sec(C[c],tot,Object.keys(tot).filter(k=>k[0]==c).sort()));
+ else if(so.value=="a")sec("Ordine alfabetico",tot,al(Object.keys(tot)));
+ else byDay.forEach(([l,dd])=>sec(l,dd,al(Object.keys(dd))));
  out.innerHTML=h}
 function copia(){navigator.clipboard&&navigator.clipboard.writeText(txt)}
 let OV={};try{OV=JSON.parse(localStorage.getItem("ov2")||"{}")}catch(e){}
@@ -138,5 +140,5 @@ function buildGr(){
  gr.querySelectorAll("input").forEach(e=>e.oninput=()=>{
   const v=+e.value;if(v>0)OV[e.dataset.k]=v;else delete OV[e.dataset.k];
   try{localStorage.setItem("ov2",JSON.stringify(OV))}catch(x){}run()})}
-[o,w,nb,n1,n2].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;buildGr();run();
+[o,w,nb,n1,n2,so].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;buildGr();run();
 </script></body></html>
