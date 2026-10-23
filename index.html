@@ -20,9 +20,11 @@ select,input{width:100%;box-sizing:border-box;font-size:16px;padding:8px;border:
 table{width:100%;border-collapse:collapse}td{padding:6px 4px;border-bottom:1px solid var(--bd)}td:last-child{text-align:right;font-weight:600;white-space:nowrap}
 .n{font-size:13px;color:var(--mu);margin:6px 0}
 td input{width:90px}
+.cd{border:1px solid var(--bd);border-radius:10px;padding:8px;margin:8px 0;background:var(--cd)}.st{float:right;font-size:13px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--bd)}.st.rr{background:#c0392b;color:#fff}.st.am{background:#e0a100;color:#fff}.st.gr{background:#2f7d4f;color:#fff}#nfa{display:none;margin:0 0 8px;padding:8px;border-radius:8px;background:#c0392b;color:#fff;font-weight:600}
 button{margin-top:10px;width:100%;padding:10px;font-size:16px;border:0;border-radius:8px;background:var(--ac);color:#fff}
 </style></head><body>
 <h1>Ordini mensa</h1>
+<div id="nfa" onclick="nfd.open=true;nfd.scrollIntoView()"></div>
 <label>Ordine</label>
 <select id="o">
 <option value="m3">Merce – mercoledì (copre gio + ven)</option>
@@ -38,6 +40,21 @@ button{margin-top:10px;width:100%;padding:10px;font-size:16px;border:0;border-ra
 <select id="so"><option value="m">Per merceologia</option><option value="a">In ordine alfabetico</option><option value="d">Per giornata</option></select>
 <div id="out"></div>
 <button onclick="copia()">Copia lista</button>
+<button onclick="fatto()">Segna ordine fatto</button>
+<details style="margin-top:14px" id="nfd"><summary><b>No food <span id="nfb"></span></b></summary>
+<p class="n">Inserisci la scorta che hai in magazzino. L'app calcola per quanti giorni basta e ti dice ORDINA ORA quando non arriva fino alla consegna dopo la prossima (mer/ven). Consumi e confezioni iniziali sono stime: correggili in "Parametri".</p>
+<div id="nf"></div>
+<button onclick="nfAdd()">+ Aggiungi prodotto</button>
+<button onclick="nfCopia()">Copia no food da ordinare</button>
+<button onclick="nfFatto()">Segna no food ordinato</button></details>
+<details style="margin-top:14px"><summary><b>Prezzi e budget</b></summary>
+<label>Budget a pasto (€)</label><input id="bud" type="number" inputmode="decimal" step="0.01" value="2.5">
+<p class="n">Prezzi iniziali stimati da me (€/kg): scrivi quelli reali, il valore grigio è quello predefinito. Per il no food il prezzo è nei Parametri di ogni prodotto.</p>
+<div id="pzl"></div></details>
+<details style="margin-top:14px"><summary><b>Storico ordini</b></summary><div id="stl"></div></details>
+<details style="margin-top:14px"><summary><b>Backup dati</b></summary>
+<p class="n">I dati stanno solo su questo telefono: copia il backup ogni tanto e conservalo (per esempio in Note).</p>
+<button onclick="bkCopia()">Copia backup</button><button onclick="bkRip()">Ripristina da backup</button></details>
 <details style="margin-top:14px"><summary><b>Grammature (g a porzione)</b></summary>
 <p class="n">Scegli settimana e giorno, poi scrivi la grammatura di ogni voce. Il valore predefinito è in grigio; vuoto = predefinito. Si salva sul telefono.</p>
 <div class="r"><div><label>Settimana</label><select id="gw"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
@@ -145,12 +162,12 @@ w.value=((sw%4)+4)%4+1;
 let txt="";
 function kg(g){return g>=1000?(g/1000).toFixed(2).replace(".",",")+" kg":Math.round(g)+" g"}
 function run(){
- const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[],byDay=[];
+ let pasti=0;const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[],byDay=[];
  t.forEach(([off,d])=>{
   const wk=(+w.value-1+off)%4+1,m=D[wk];
   if(!m){miss.push(G[d]+" (sett. "+wk+")");return}
   days.push(G[d]+" s."+wk);const dd={};byDay.push([G[d]+" (sett. "+wk+")",dd]);
-  const na=(d==2||d==4)?+n2.value:+n1.value;
+  const na=(d==2||d==4)?+n2.value:+n1.value;pasti+=+nb.value+na;
   [["b",+nb.value],["a",na]].forEach(([k,n])=>exp(wk,k,d).forEach(([nm,c,g],i)=>{
    if((c=="o")!=oo)return;
    const ov=+OV[wk+"|"+k+"|"+d+"|"+i];if(ov>0)g=ov;
@@ -159,12 +176,15 @@ function run(){
  if(miss.length)h+="<p class='n'>⚠ Menù non ancora inserito: "+miss.join(", ")+"</p>";
  txt="";
  const sec=(tt,ob,ks)=>{if(!ks.length)return;h+="<h2>"+tt+"</h2><table>";txt+=tt.toUpperCase()+"\n";
-  ks.forEach(k=>{const nm=k.slice(2);h+="<tr><td>"+nm+"</td><td>"+kg(ob[k])+"</td></tr>";txt+=nm+": "+kg(ob[k])+"\n"});h+="</table>";txt+="\n"};
+  ks.forEach(k=>{const nm=k.slice(2);const e=ob[k]/1000*PZ(nm);h+="<tr><td>"+nm+"</td><td>"+kg(ob[k])+" <small>"+eu(e)+"</small></td></tr>";txt+=nm+": "+kg(ob[k])+" ("+eu(e)+")\n"});h+="</table>";txt+="\n"};
  const al=a=>a.sort((x,y)=>x.slice(2).localeCompare(y.slice(2)));
  if(so.value=="m")Object.keys(C).forEach(c=>sec(C[c],tot,Object.keys(tot).filter(k=>k[0]==c).sort()));
  else if(so.value=="a")sec("Ordine alfabetico",tot,al(Object.keys(tot)));
  else byDay.forEach(([l,dd])=>sec(l,dd,al(Object.keys(dd))));
- out.innerHTML=h}
+ const eur=Object.keys(tot).reduce((a,k)=>a+tot[k]/1000*PZ(k.slice(2)),0),bg=+bud.value||0,pp=pasti?eur/pasti:0;
+ h="<div class='cd'><b>Totale stimato: "+eu(eur)+"</b><br><span class='n'>"+pasti+" pasti coperti · "+eu(pp)+" a pasto per questa parte di spesa (budget totale "+eu(bg)+")</span></div>"+h;
+ last={l:o.options[o.selectedIndex].text,e:eur,p:pasti,r:Object.keys(tot).map(k=>[k.slice(2),k[0],Math.round(tot[k]),tot[k]/1000*PZ(k.slice(2))])};
+ out.innerHTML=h;nfStat()}
 function copia(){navigator.clipboard&&navigator.clipboard.writeText(txt)}
 const MN={
 1:{b:["Pasta in salsa aurora (pomodoro e besciamella)|Uova strapazzate|Erbette*|Pane bianco|Frutta fresca di stagione",
@@ -211,6 +231,45 @@ function buildMn(){
  const x=MN[mw.value][mk.value],N=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì"];let h="";
  x.forEach((d,i)=>{h+="<h2>"+N[i]+"</h2>";(d+(mk.value=="a"?"|Verdura cruda di stagione|Pane":"")).split("|").forEach(l=>h+="<div>"+l+"</div>")});
  mn.innerHTML=h+"<p class='n'>* Il prodotto potrebbe essere surgelato/congelato all'origine. Pane a ridotto contenuto di sale, olio bio EVO. Allergeni: vedi il PDF originale.</p>"}
+const DP={};"Farro:3,Minestrone surgelato:1.9,Lenticchie:2.8,Patate:1.2,Parmigiano:14,Olio EVO:8,Pasta di semola:1.2,Zucchine:2.2,Cipolle:1.2,Zafferano:6000,Pasta integrale:1.4,Pomodori pelati:1.3,Melanzane:2.3,Pizza:3.5,Riso:1.7,Barbabietole cotte:2.5,Sedano:1.8,Carote:1.3,Pane semintegrale:3.5,Pane comune:3.2,Torta da forno:5,Barretta cioccolato equo:14,Frutta di stagione:1.8,Spinaci:2.3,Insalata:3,Pomodori freschi:2.5,Aceto di mele:2,Erbette/bietole:2.3,Fagiolini:2.8,Fagioli cannellini:3,Mais:3.5,Uova:3.5,Piselli:2.5,Provolone dolce:9,Pane grattugiato:2.2,Platessa:8.5,Limoni:2.5,Latte UHT:1.1,Farina 0:1,Ravioli di magro:6,Pasta all'uovo:4.5,Bovino macinato:8.5,Orzo perlato:2.2,Ceci:2.8,Peperoni:2.8,Basilico:12,Pinoli:60,Merluzzo:9.5,Totani:8,Pollo petto:7.5,Tacchino:8.5,Pollo coscia/fuso:4.5,Mozzarella:7,Stracchino:7,Prosciutto cotto:11,Yogurt alla frutta:2.8,Gelato:6,Carciofi:5.5,Suino braciola:6.5,Suino arrosto:6.5,Hamburger:7,Formaggio:8,Tonno:11,Pomodorini:3.5,Guanciale:11,Salmone:15,Polpette di legumi:6,Strudel ai funghi:7,Pesto:9,Radicchio:3.5,Gorgonzola:9,Pesce spada:16,Finocchi:1.8,Salsiccia:8,Speck:15,Gnocchi:3,Verdure ripiene:6,Carote e piselli:2.2,Misto verdure:2.2,Gamberetti:14,Tortino radicchio e scamorza:7,Taleggio:9,Erbazzone:6,Carote al forno:1.3,Verdura cruda:2".split(",").forEach(e=>{const i=e.lastIndexOf(":");DP[e.slice(0,i)]=+e.slice(i+1)});
+let PRZ={},ST=[],last=null;try{PRZ=JSON.parse(localStorage.getItem("pz")||"{}");ST=JSON.parse(localStorage.getItem("st")||"[]");bud.value=localStorage.getItem("bd")||"2.5"}catch(e){}
+function PZ(n){const v=PRZ[n];return v!==undefined&&v!==""?+v:(DP[n]!==undefined?DP[n]:5)}
+function eu(x){return (x||0).toFixed(2).replace(".",",")+" €"}
+function today(){return new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+function stSave(){try{localStorage.setItem("st",JSON.stringify(ST))}catch(e){}}
+function pzBuild(){const s=new Set();for(const w in D)["b","a"].forEach(k=>D[w][k].forEach((_,d)=>exp(w,k,d).forEach(e=>s.add(e[0]))));
+ pzl.innerHTML="<table>"+[...s].sort((a,b)=>a.localeCompare(b)).map(n=>'<tr><td>'+n+' <small style="color:var(--mu)">€/kg</small></td><td><input type="number" inputmode="decimal" data-n="'+n+'" placeholder="'+(DP[n]!==undefined?DP[n]:5)+'" value="'+(PRZ[n]!==undefined?PRZ[n]:"")+'"></td></tr>').join("")+"</table>"}
+pzl.onchange=e=>{const n=e.target.dataset.n;if(!n)return;const v=e.target.value;if(v==="")delete PRZ[n];else PRZ[n]=+v;try{localStorage.setItem("pz",JSON.stringify(PRZ))}catch(x){}run()};
+bud.onchange=()=>{try{localStorage.setItem("bd",bud.value)}catch(e){}run();stBuild()};
+function stBuild(){const m=today().slice(0,7);let e=0,p=0;ST.forEach(x=>{if(x.d.slice(0,7)==m){e+=x.e;p+=x.p}});const b=+bud.value||0,pp=p?e/p:0;
+ let h='<div class="cd"><b>Questo mese</b><br>Speso: '+eu(e)+' · pasti: '+p+' · <b style="color:'+(pp>b?"#c0392b":"#2f7d4f")+'">'+eu(pp)+' a pasto</b> (budget '+eu(b)+')<div class="n">Conta tutta la spesa registrata (cibo e no food) divisa per i pasti coperti dagli ordini merce.</div></div>';
+ h+=ST.map((x,i)=>'<details class="cd"><summary>'+x.d+' · '+x.l+' · <b>'+eu(x.e)+'</b></summary><table>'+x.r.map(r=>'<tr><td>'+r[0]+'</td><td>'+(r[1]=="n"?r[2]+" conf.":kg(r[2]))+' <small>'+eu(r[3])+'</small></td></tr>').join("")+'</table><button style="background:#a33" onclick="stDel('+i+')">Elimina</button></details>').join("");
+ stl.innerHTML=h}
+function stDel(i){if(confirm("Eliminare questo ordine dallo storico?")){ST.splice(i,1);stSave();stBuild()}}
+function fatto(){if(!last||!last.r.length)return;if(!confirm("Registrare questo ordine ("+eu(last.e)+")?"))return;ST.unshift({d:today(),l:last.l,e:last.e,p:o.value[0]=="m"?last.p:0,r:last.r});stSave();stBuild()}
+function nfFatto(){if(!nfR.length)return;if(!confirm("Registrare l'ordine no food?"))return;ST.unshift({d:today(),l:"No food",e:nfR.reduce((a,r)=>a+r[3],0),p:0,r:nfR.map(r=>[r[0],"n",r[2],r[3]])});stSave();stBuild()}
+function bkCopia(){const t=JSON.stringify({ov2:OV,nf:NF,pz:PRZ,st:ST,bd:bud.value});navigator.clipboard&&navigator.clipboard.writeText(t)}
+function bkRip(){const t=prompt("Incolla qui il backup");if(!t)return;try{const x=JSON.parse(t);const S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));S("ov2",x.ov2||{});S("nf",x.nf||null);S("pz",x.pz||{});S("st",x.st||[]);localStorage.setItem("bd",x.bd||"2.5");location.reload()}catch(e){alert("Backup non valido")}}
+const NF0=[["Tovagliette di carta","p",1,500,6],["Tovaglioli","p",1,1000,8],["Detersivo piatti (L)","s",3,5,12],["Sgrassatore (L)","s",2,5,14],["Sacchi spazzatura (pz)","s",100,100,8],["Guanti monouso (pz)","s",300,100,4],["Carta (rotoli)","s",10,6,9]];
+let NF=[],txtNF="",nfR=[];try{NF=JSON.parse(localStorage.getItem("nf")||"null")}catch(e){}
+if(!NF)NF=NF0.map(([n,t,c,k,pc])=>({n,t,c,k,pc,s:"",o:10}));
+function nfSave(){try{localStorage.setItem("nf",JSON.stringify(NF))}catch(e){}}
+function nxt(){const r=[];let d=new Date(),n=0;while(r.length<2){d=new Date(d.getTime()+864e5);const w=d.getDay();if(w>=1&&w<=5)n++;if(w==3||w==5)r.push(n)}return r}
+function nfBuild(){nf.innerHTML=NF.map((x,i)=>'<div class="cd" data-i="'+i+'"><b>'+x.n+'</b><span class="st" id="st'+i+'"></span><div class="r"><div><label>Scorta ora</label><input data-f="s" type="number" inputmode="decimal" value="'+x.s+'"></div></div><div class="n" id="tx'+i+'"></div><details><summary class="n">Parametri</summary><label>Nome</label><input data-f="n" value="'+x.n+'"><div class="r"><div><label>Consumo</label><input data-f="c" type="number" inputmode="decimal" value="'+x.c+'"></div><div><label>Tipo</label><select data-f="t"><option value="p"'+(x.t=="p"?" selected":"")+'>per pasto</option><option value="s"'+(x.t=="s"?" selected":"")+'>a settimana</option></select></div></div><div class="r"><div><label>Pezzi per confezione</label><input data-f="k" type="number" inputmode="decimal" value="'+x.k+'"></div><div><label>Obiettivo (giorni)</label><input data-f="o" type="number" inputmode="decimal" value="'+x.o+'"></div></div><div class="r"><div><label>Prezzo per confezione (€)</label><input data-f="pc" type="number" inputmode="decimal" value="'+(x.pc||"")+'"></div></div><button style="background:#a33" onclick="nfDel('+i+')">Elimina</button></details></div>').join("");nfStat()}
+function nfStat(){const [d1,d2]=nxt(),wk=(+nb.value)*5+(+n1.value)*3+(+n2.value)*2;let bad=0;txtNF="";nfR=[];
+ NF.forEach((x,i)=>{const el=document.getElementById("st"+i),tx=document.getElementById("tx"+i);if(!el)return;
+  const cd=x.t=="p"?x.c*wk/5:x.c/5;
+  if(x.s===""||!cd){el.className="st";el.textContent="inserisci scorta";tx.textContent="";return}
+  const aut=x.s/cd,q=Math.max(0,Math.ceil((cd*(d1+(+x.o||10))-x.s)/(x.k||1))),cl=aut<d2?"rr":aut<d2+3?"am":"gr";
+  if(cl=="rr")bad++;if(cl!="gr"&&q){txtNF+=x.n+": "+q+" conf. ("+q*x.k+" pz)"+(x.pc?" · "+eu(q*x.pc):"")+"\n";nfR.push([x.n,"n",q,q*(x.pc||0)])}
+  el.className="st "+cl;el.textContent=(cl=="rr"?"ORDINA ORA":cl=="am"?"presto":"ok")+" · "+aut.toFixed(1)+" gg";
+  tx.textContent="Consumo "+(cd>=10?Math.round(cd):cd.toFixed(1))+"/giorno"+(q&&cl!="gr"?" · da ordinare: "+q+" conf.":"")});
+ nfb.textContent=bad?"("+bad+" da ordinare)":"";nfa.style.display=bad?"block":"none";nfa.textContent="⚠ No food da ordinare: "+bad}
+nf.onchange=e=>{const c=e.target.closest(".cd"),f=e.target.dataset.f;if(!c||!f)return;const v=e.target.value;
+ NF[+c.dataset.i][f]=(f=="n"||f=="t")?v:(v===""?"":+v);if(f=="n")c.querySelector("b").textContent=v;nfSave();nfStat()};
+function nfAdd(){const n=prompt("Nome del prodotto");if(n){NF.push({n,t:"s",c:1,k:1,s:"",o:10});nfSave();nfBuild()}}
+function nfDel(i){if(confirm("Eliminare "+NF[i].n+"?")){NF.splice(i,1);nfSave();nfBuild()}}
+function nfCopia(){navigator.clipboard&&navigator.clipboard.writeText(txtNF||"Niente da ordinare")}
 let OV={};try{OV=JSON.parse(localStorage.getItem("ov2")||"{}")}catch(e){}
 function buildGr(){
  const m=D[gw.value],d=+gd.value;let h="";
@@ -224,5 +283,5 @@ function buildGr(){
  gr.querySelectorAll("input").forEach(e=>e.oninput=()=>{
   const v=+e.value;if(v>0)OV[e.dataset.k]=v;else delete OV[e.dataset.k];
   try{localStorage.setItem("ov2",JSON.stringify(OV))}catch(x){}run()})}
-[o,w,nb,n1,n2,so].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;mw.value=w.value;mw.onchange=mk.onchange=buildMn;buildMn();buildGr();run();
+[o,w,nb,n1,n2,so].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;mw.value=w.value;mw.onchange=mk.onchange=buildMn;buildMn();pzBuild();stBuild();nfBuild();buildGr();run();
 </script></body></html>
