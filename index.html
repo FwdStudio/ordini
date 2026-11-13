@@ -38,7 +38,8 @@ details>summary{cursor:pointer;padding:6px 0}
 <select id="o"><option value="m3">Merce – mercoledì (copre gio + ven)</option><option value="m5">Merce – venerdì (copre lun + mar + mer dopo)</option><option value="o1">Ortofrutta – lunedì (copre mar + mer + gio)</option><option value="o4">Ortofrutta – giovedì (copre ven + lun dopo)</option></select>
 <div class="r"><div><label>Settimana del menù</label><select id="w"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
 <div><label>Ordina la lista</label><select id="so"><option value="m">Per merceologia</option><option value="a">Alfabetico</option><option value="d">Per giornata</option></select></div></div>
-<details><summary class="n">Numero di pasti</summary><div class="r"><div><label>Bambini</label><input id="nb" type="number" value="240"></div><div><label>Adulti lun/mar/gio</label><input id="n1" type="number" value="80"></div><div><label>Adulti mer/ven</label><input id="n2" type="number" value="20"></div></div></details>
+<details open><summary class="n">Numero di pasti</summary><div class="r"><div><label>Infanzia</label><input id="nI" type="number" inputmode="numeric" value="80"></div><div><label>Prim. 1°-2°</label><input id="nP" type="number" inputmode="numeric" value="80"></div><div><label>Prim. 3°-5°</label><input id="nQ" type="number" inputmode="numeric" value="80"></div></div>
+<div class="r"><div><label>Tot. bambini</label><input id="nb" type="number" value="240" readonly></div><div><label>Adulti lun/mar/gio</label><input id="n1" type="number" inputmode="numeric" value="80"></div><div><label>Adulti mer/ven</label><input id="n2" type="number" inputmode="numeric" value="20"></div></div></details>
 <div id="out"></div>
 <button onclick="copia()">Copia lista</button>
 <button onclick="fatto()">Segna ordine fatto</button>
@@ -46,7 +47,7 @@ details>summary{cursor:pointer;padding:6px 0}
 <section id="t-ricette" hidden>
 <div class="r"><div><label>Settimana</label><select id="rw"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
 <div><label>Giorno</label><select id="rd"><option value="0">Lunedì</option><option value="1">Martedì</option><option value="2">Mercoledì</option><option value="3">Giovedì</option><option value="4">Venerdì</option></select></div></div>
-<p class="n">Per ogni ricetta: grammatura a porzione × numero di pasti = quantità totale da preparare. Usa le grammature personalizzate se le hai modificate.</p>
+<p class="n">Per ogni ricetta: grammatura a porzione × numero di pasti = quantità totale da preparare. Per i bambini: grammature infanzia / primaria 1°-2° / primaria 3°-5° (il totale usa i numeri che inserisci in Ordini). Usa le grammature personalizzate se le hai modificate.</p>
 <div id="rc"></div>
 </section>
 <section id="t-menu" hidden>
@@ -79,108 +80,29 @@ details>summary{cursor:pointer;padding:6px 0}
 <nav id="nav"><button data-t="ordini" onclick="go('ordini')"><span>🛒</span>Ordini</button><button data-t="ricette" onclick="go('ricette')"><span>👩‍🍳</span>Ricette</button><button data-t="menu" onclick="go('menu')"><span>📋</span>Menù</button><button data-t="nofood" onclick="go('nofood')"><span>🧻</span>No food</button><button data-t="costi" onclick="go('costi')"><span>💶</span>Costi</button></nav>
 <script>
 // grammi per porzione. cat: s=secco/pane, f=fresco, g=surgelato, o=ortofrutta
-const PA="Parmigiano~f:4:5",OL="Olio EVO~s:5:6",CI="Cipolle~o:.5:.5",V="Verdura cruda~o:80";
-// ricette dal ricettario CIR Food: titolo|ingrediente~cat:PR:AD (g a porzione). cat: s=secco, f=fresco, g=surgelato, o=ortofrutta
-const R={
-vel:`Vellutata di verdure e legumi con farro|Farro~s:40:50,Minestrone surgelato~g:35:40,Lenticchie~s:10:12.5,Patate~g:10:15,Parmigiano~f:3:3,${OL}`,
-psz:`Pasta sugo zucchine e zafferano|Pasta di semola~s:70:90,Zucchine~g:20:25,${PA},${OL},${CI},Zafferano~s:.05:.06`,
-pim:`Pasta integrale pomodoro e melanzane|Pasta integrale~s:70:90,Pomodori pelati~s:40:50,Melanzane~o:10:15,${PA},${OL},${CI}`,
-piz:`Pizza margherita|Pizza~f:200:300`,
-rib:`Riso in crema di barbabietola|Riso~s:70:90,Barbabietole cotte~o:15:20,${PA},${OL},${CI},Sedano~o:2:2,Carote~o:2:2`,
-riz:`Riso allo zafferano|Riso~s:70:90,${PA},${OL},${CI},Zafferano~s:.06:.07,Sedano~o:2:2,Carote~o:2:2`,
-pani:`Pane integrale|Pane semintegrale~s:50:50`,
-panc:`Pane comune|Pane comune~s:50:50`,
-tor:`Torta del centro cottura|Torta da forno~s:50:70`,
-bar:`Barretta di cioccolato fondente|Barretta cioccolato equo~s:20:20`,
-fru:`Frutta fresca di stagione|Frutta di stagione~o:150:150`,
-mvf:`Misto di verdure cotte al forno|Zucchine~g:40:55,Carote~g:40:55,Patate~g:20:30,${OL}`,
-spi:`Spinaci al forno|Spinaci~g:100:140,${OL}`,
-ipo:`Insalata e pomodori|Insalata~o:25:40,Pomodori freschi~o:40:60,${OL},Aceto di mele~s:3:5`,
-cju:`Carote a julienne|Carote~o:50:70,${OL},Aceto di mele~s:3:5`,
-erb:`Erbette al forno|Erbette/bietole~g:100:140,${OL}`,
-fac:`Fagiolini e carote|Fagiolini~g:60:80,Carote~g:40:60,${OL}`,
-pat:`Patate|Patate~o:100:130,${OL}`,
-pomi:`Pomodori in insalata|Pomodori freschi~o:100:120,${OL},Aceto di mele~s:3:5`,
-fao:`Fagiolini all'olio|Fagiolini~g:100:140,${OL}`,
-pca:`Pomodori e cannellini|Pomodori freschi~o:70:90,Fagioli cannellini~s:7.5:15,${OL},Aceto di mele~s:3:5`,
-ivm:`Insalata verde e mais|Insalata~o:45:65,Mais~s:7.5:10,${OL},Aceto di mele~s:3:5`,
-tov:`Tortino vegetale (verdure e piselli)|Patate~g:50:60,Uova~f:7.5:10,Carote~g:20:25,Piselli~g:20:25,Provolone dolce~f:15:20,Pane grattugiato~s:6:7,${OL}`,
-plo:`Platessa olio e limone|Platessa~g:100:120,${OL},Limoni~o:3:5`,
-cpp:`Crocchette di patate e piselli|Patate~g:50:70,Piselli~g:20:30,Provolone dolce~f:15:20,Uova~f:7.5:10,Pane grattugiato~s:6:7,${OL}`,
-ppo:`Pasta al pomodoro|Pasta di semola~s:70:90,Pomodori pelati~s:40:50,${PA},${OL},${CI},Carote~o:2:2`,
-pmi:`Pasta mimosa|Pasta di semola~s:70:90,${PA},Latte UHT~f:10:15,Farina 0~s:3:4,${OL},Zafferano~s:.05:.06`,
-rav:`Ravioli di magro olio e salvia|Ravioli di magro~f:90:110,${PA},${OL},${CI}`,
-aur:`Pasta in salsa aurora|Pasta di semola~s:70:90,Pomodori pelati~s:35:45,Latte UHT~f:10:15,Farina 0~s:3:4,Carote~o:2:2,${CI},${PA},${OL}`,
-las:`Lasagne alla bolognese|Pasta all'uovo~g:90:120,Bovino macinato~f:60:80,Pomodori pelati~s:45:55,Latte UHT~f:10:15,Farina 0~s:3:4,${CI},Sedano~o:2:2,Carote~o:2:2,${PA},${OL}`,
-rpr:`Riso primavera alle verdure|Riso~s:70:90,Zucchine~g:12.5:10,Carote~g:12.5:10,${CI},Sedano~o:2:2,${PA},${OL}`,
-rop:`Riso olio e parmigiano|Riso~s:70:90,${PA},${OL},Carote~o:2:2,Sedano~o:2:2,${CI}`,
-vco:`Vellutata di carote e ceci con orzo|Orzo perlato~s:40:50,Carote~g:20:25,Ceci~s:10:12.5,Patate~g:15:20,${PA},${OL}`,
-pag:`Pasta agli aromi|Pasta di semola~s:70:90,${PA},${OL},${CI}`,
-pip:`Pasta integrale al pomodoro|Pasta integrale~s:70:90,Pomodori pelati~s:40:50,${PA},${OL},Carote~o:2:2,${CI}`,
-pic:`Pasta integrale crema di pomodoro e peperone|Pasta integrale~s:70:90,Pomodori pelati~s:40:50,Peperoni~o:10:15,${PA},${OL},${CI}`,
-pie:`Pasta integrale al pesto|Pasta integrale~s:70:90,Basilico~o:10:12.5,${PA},${OL},Pinoli~s:.01:.013`,
-prp:`Pasta al ragù di pesce|Pasta di semola~s:70:90,Pomodori pelati~s:40:50,Merluzzo~g:15:25,${OL}`,
-prl:`Pasta al ragù di lenticchie|Pasta di semola~s:70:90,Pomodori pelati~s:40:50,Lenticchie~s:10:12.5,${PA},${OL},${CI},Sedano~o:2:2,Carote~o:2:2`,
-pli:`Platessa impanata|Platessa~g:100:120,Pane grattugiato~s:4:5,Uova~f:3:4,${OL}`,
-tgr:`Totani gratinati (scansione sfocata: stimato)|Totani~g:100:120,Pane grattugiato~s:4:5,${OL}`,
-pme:`Polpette di merluzzo (scansione sfocata: stimato)|Merluzzo~g:60:75,Patate~g:40:60,Uova~f:10:15,Pane grattugiato~s:6:7,${OL}`,
-fri:`Frittata alle erbe aromatiche|Uova~f:50:75,Latte UHT~f:20:30,${PA},${OL}`,
-cot:`Cotoletta di pollo|Pollo petto~f:80:100,${OL},Pane grattugiato~s:4:5,Uova~f:3:4`,
-bta:`Bocconcini di tacchino gratinati|Tacchino~f:80:100,${OL},Pane grattugiato~s:3:4`,
-pro:`Provolone dolce|Provolone dolce~f:40:50`,
-uos:`Uova strapazzate|Latte UHT~f:50:75,Uova~f:20:30,${PA},${OL}`,
-fus:`Fusi di pollo al forno|Pollo coscia/fuso~f:200:220,${OL}`,
-mgr:`Filetto di merluzzo gratinato|Merluzzo~g:100:120,Pane grattugiato~s:4:5,${OL}`,
-moz:`Mozzarella|Mozzarella~f:60:90`,
-str:`Stracchino|Stracchino~f:60:90`,
-pcu:`Prosciutto cotto (scansione sfocata: stimato)|Prosciutto cotto~f:50:75`,
-rol:`Rollè di uova|Uova~f:50:75,Latte UHT~f:20:30,Provolone dolce~f:10:12.5,Parmigiano~f:3:4,${OL}`,
-cpm:`Crocchette di patate, melanzane e ceci|Patate~g:50:70,Ceci~s:10:12.5,Melanzane~o:7.5:15,Provolone dolce~f:15:20,Uova~f:7.5:10,Pane grattugiato~s:6:7,${OL}`,
-yog:`Yogurt alla frutta (stima)|Yogurt alla frutta~f:125:125`,
-gel:`Gelato (stima)|Gelato~f:80:80`};
-// menù: id ricetta (colonna PR bambini / AD adulti), "id*0.5" = mezza porzione, oppure "Nome~cat:g" (stima mia)
-const D={
-1:{b:[["aur","uos","erb","panc","fru"],["riz","tov","cju","pani","fru"],["pag","plo","Insalata~o:50","panc","yog"],["vel","fus","pat","pani","fru"],["pic","pro","fao","panc","fru"]],
-a:[["Pasta di semola~s:100","Olio EVO~s:10","Uova~f:30","Carciofi~g:30","Suino braciola~f:75","Peperoni~g:150",V,"panc"],
-["piz*.5","Pasta di semola~s:50","Pomodori pelati~s:25","Hamburger~f:60","Formaggio~f:10","Tonno~s:25","Fagioli cannellini~s:25","Insalata~o:25","pat",V,"panc"],
-["riz","Strudel ai funghi~f:150","fao",V,"panc"],
-["Pasta di semola~s:100","Pomodorini~o:30","Guanciale~f:12","Uova~f:12","tgr*.5","Tacchino~f:60","Tonno~s:15","Zucchine~g:150",V,"panc"],
-["Pasta di semola~s:100","Salmone~g:20","Polpette di legumi~s:75","mvf",V,"panc"]]},
-2:{b:[["rib","moz","pomi","panc","fru"],["ppo","cpm","ivm","pani","fru"],["las","fac","pani","gel"],["vco","bta","pat","pani","fru"],["pie","mgr","cju","panc","fru"]],
-a:[["Pasta di semola~s:50","Riso~s:40","Formaggio~f:20","Merluzzo~g:75","Suino arrosto~f:75","Carote~o:150",V,"panc"],
-["Riso~s:50","Pasta di semola~s:50","Pesto~f:15","Patate~o:100","Tacchino~f:100","spi",V,"panc"],
-["las","fac",V,"panc"],
-["Pasta di semola~s:50","Peperoni~g:30","Riso~s:40","Radicchio~o:20","Gorgonzola~f:15","Pesce spada~g:75","fus*.5","pat",V,"panc"],
-["Riso~s:80","Zucchine~g:60","Melanzane~o:100","Mozzarella~f:40","Finocchi~o:150",V,"panc"]]},
-3:{b:[["prp","fri","fao","panc","fru"],["piz","ipo","bar"],["rop","pme","mvf","panc","fru"],["psz","cot","pomi","pani","fru"],["pip","cpp","cju","pani","fru"]],
-a:[["Pasta di semola~s:50","Tonno~s:20","Riso~s:40","Salsiccia~f:40","Speck~f:20","Formaggio~f:20","pli*.5","Zucchine~g:150",V,"panc"],
-["Gnocchi~f:100","piz*.5","Tacchino~f:60","Tonno~s:15","Verdure ripiene~g:100","Carote e piselli~g:150",V,"panc"],
-["Pasta di semola~s:100","Misto verdure~g:40","mgr","fao",V,"panc"],
-["Pasta di semola~s:100","Guanciale~f:15","Zucchine~g:30","Gamberetti~g:20","cot","Mozzarella~f:30","Fagioli cannellini~s:25","pat",V,"panc"],
-["Pasta di semola~s:100","Pomodori pelati~s:50","Tortino radicchio e scamorza~f:150","mvf",V,"panc"]]},
-4:{b:[["prl","str","spi","panc","fru"],["pmi","rol","cju","pani","fru"],["rav","tgr","ivm","pani","tor"],["rpr","pcu","pca","pani","fru"],["pim","pli","fao","panc","fru"]],
-a:[["Pasta di semola~s:50","Riso~s:40","Melanzane~o:40","Radicchio~o:25","Taleggio~f:20","Suino braciola~f:75","Mozzarella~f:40","Insalata~o:40","Peperoni~g:150",V,"panc"],
-["Pasta di semola~s:100","Tonno~s:20","Pomodorini~o:30","Verdure ripiene~g:100","Speck~f:40","fao",V,"panc"],
-["Pasta di semola~s:100","Zucchine~g:40","Erbazzone~f:150","Insalata~o:40","Mais~s:15",V,"panc"],
-["Riso~s:50","Pasta di semola~s:50","Salmone~g:25","fus","Mozzarella~f:40","pat",V,"panc"],
-["rav","tgr","Carote al forno~o:150",V,"panc"]]}};
-function exp(wk,k,d){const o=[];D[wk][k][d].forEach(x=>{const [id,mu]=x.split("*"),f=mu?+mu:1;
- if(R[id]){const [t,sx]=R[id].split("|");sx.split(",").forEach(e=>{const [n,a,b]=e.split(":"),[nm,c]=n.split("~");o.push([nm,c,(k=="b"?+a:+b)*f,t])})}
- else{const [n,g]=x.split(":"),[nm,c]=n.split("~");o.push([nm,c,+g,"stima"])}});return o}
+const R={"r00": "Pasta al pomodoro|Pasta di semola~s:60:65:70:80,Pomodori pelati~s:50:50:60:70,Cipolle~o:5:5:5:5,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r01": "Gnocchi al pomodoro|Gnocchi~f:0:165:180:220,Pomodori pelati~s:0:50:60:70,Cipolle~o:0:5:5:5,Parmigiano~f:0:4:5:7,Olio EVO~s:0:5:5:7", "r02": "Pasta agli aromi|Pasta di semola~s:60:65:70:80,Parmigiano~f:4:5:5:7,Olio EVO~s:4:5:5:7", "r03": "Pasta al ragù di verdure|Pasta di semola~s:60:65:70:80,Pomodori pelati~s:30:32:35:40,Zucchine~o:15:20:25:30,Melanzane~o:15:20:25:30,Parmigiano~f:4:5:5:7,Carote~o:3:3:3:3,Sedano~o:3:3:3:3,Cipolle~o:3:3:3:3,Olio EVO~s:4:5:5:7", "r04": "Risotto alla zucca|Riso~s:60:65:70:80,Zucca~o:30:33:35:40,Cipolle~o:5:5:5:5,Brodo vegetale~s:175:190:200:225,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r05": "Passato di fagioli cannellini con pasta|Pasta di semola~s:30:35:40:50,Fagioli cannellini~s:25:30:35:40,Patate~o:40:50:60:80,Carote~o:5:6:7:8,Cipolle~o:5:6:7:8,Sedano~o:5:6:7:8,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r06": "Lasagne al ragù di bovino|Pasta all'uovo~g:60:65:70:80,Vitellone macinato~f:35:37:40:45,Pomodori pelati~s:50:55:60:70,Besciamella~f:20:22:25:30,Cipolle~o:5:5:5:5,Sedano~o:5:5:5:5,Carote~o:5:5:5:5,Parmigiano~f:8:10:10:15,Olio EVO~s:4:5:5:7", "r07": "Crema di ceci con pasta|Pasta di semola~s:30:35:40:50,Ceci~s:25:30:35:40,Patate~o:40:50:60:80,Carote~o:5:6:7:8,Cipolle~o:5:6:7:8,Sedano~o:5:6:7:8,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r08": "Ravioli di carne al pomodoro|Pasta ripiena~f:70:80:90:110,Pomodori pelati~s:50:50:60:70,Cipolle~o:5:5:5:5,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r09": "Pasta mimosa (besciamella e zafferano)|Pasta di semola~s:60:65:70:80,Cipolle~o:5:5:5:5,Olio EVO~s:4:5:5:7,Parmigiano~f:8:10:10:15,Zafferano~s:0.03:0.03:0.04:0.05,Latte UHT~f:30:30:30:30,Brodo vegetale~s:30:30:30:30,Farina~s:10:10:10:10", "r10": "Passato di verdure con ditali|Pasta di semola~s:30:35:40:50,Minestrone surgelato~g:35:40:45:55,Patate~o:40:50:60:80,Carote~o:5:6:7:8,Cipolle~o:5:6:7:8,Sedano~o:5:6:7:8,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r11": "Passato di zucchine e cavolfiori con pasta|Pasta di semola~s:30:35:40:50,Zucchine~o:15:20:20:25,Cavolfiori~g:15:20:20:25,Patate~o:40:50:60:80,Carote~o:5:6:7:8,Cipolle~o:5:6:7:8,Sedano~o:5:6:7:8,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r12": "Pizza rossa (infanzia) / margherita (primaria e adulti)|Pizza~f:100:180:200:250", "r13": "Riso alla barbabietola|Riso~s:60:65:70:80,Barbabietole cotte~o:12.5:12.5:15:20,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7,Cipolle~o:3:3:3:3,Sedano~o:3:3:3:3,Carote~o:3:3:3:3", "r14": "Gnocchetti sardi al ragù di tonno|Gnocchetti sardi~s:60:65:70:80,Pomodori pelati~s:50:50:60:70,Tonno~s:35:37:40:45,Olio EVO~s:4:5:5:7,Cipolle~o:3:3:3:3,Sedano~o:3:3:3:3,Carote~o:3:3:3:3", "r15": "Pasta pomodoro e lenticchie|Pasta di semola~s:60:65:70:80,Pomodori pelati~s:50:50:60:70,Lenticchie~s:15:20:25:30,Cipolle~o:5:5:5:5,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r16": "Platessa impanata|Platessa~g:80:90:100:120,Pane grattugiato~s:10:10:10:10,Uova~f:10:10:10:10,Olio EVO~s:4:5:5:7", "r17": "Hamburger di merluzzo agli agrumi|Merluzzo~g:70:75:80:90,Patate~o:35:37:40:45,Uova~f:10:10:10:10,Pane grattugiato~s:12:14:15:20,Olio EVO~s:4:5:5:7,Agrumi~o:2:3:3:4", "r18": "Frittata alle erbe aromatiche|Uova~f:50:65:70:80,Latte UHT~f:10:10:10:10,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r19": "Cotoletta di pollo|Pollo petto~f:60:75:80:100,Uova~f:10:10:10:10,Pane grattugiato~s:10:10:10:10,Olio EVO~s:4:5:5:7", "r20": "Bocconcini di pollo gratinati|Pollo petto~f:60:75:80:100,Pane grattugiato~s:10:10:10:10,Olio EVO~s:4:5:5:7", "r21": "Provolone dolce|Provolone dolce~f:40:50:55:70", "r22": "Primosale|Primosale~f:50:60:70:100", "r23": "Frittata ricotta e zucchine|Uova~f:50:65:70:80,Latte UHT~f:8:10:10:12,Zucchine~o:25:30:30:40,Ricotta~f:10:12:12:15,Olio EVO~s:4:5:5:7", "r24": "Hamburger di bovino|Bovino macinato~f:60:70:80:100,Patate~o:25:27:30:35,Uova~f:10:10:10:10,Olio EVO~s:4:5:5:7", "r25": "Arrosto di tacchino al limone|Tacchino~f:80:90:100:120,Farina~s:2:3:3:4,Limoni~o:2:3:3:4,Olio EVO~s:4:5:5:7", "r26": "Merluzzo gratinato|Merluzzo~g:80:90:100:120,Pane grattugiato~s:10:10:10:10,Olio EVO~s:4:5:5:7", "r27": "Mozzarella (1/2 porzione)|Mozzarella~f:30:30:30:45", "r28": "Formaggio spalmabile|Formaggio spalmabile~f:50:60:70:100", "r29": "Prosciutto cotto|Prosciutto cotto~f:50:55:60:70", "r30": "Frittata e formaggio|Uova~f:50:65:70:80,Latte UHT~f:8:10:10:12,Provolone dolce~f:10:12:12:15,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r31": "Crocchette di patate e formaggio|Patate~o:60:65:70:80,Provolone dolce~f:12:15:18:25,Uova~f:10:10:10:10,Pane grattugiato~s:10:10:10:10,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r32": "Arrosto di lonza|Lonza di suino~f:80:85:90:100,Brodo vegetale~s:2:3:3:4,Olio EVO~s:4:5:5:7", "r33": "Uova sode, maionese e tonno|Tonno~s:30:40:40:50,Maionese~s:10:15:15:20", "r34": "Insalata verde|Insalata~o:25:35:45:50,Olio EVO~s:4:5:5:7,Aceto di mele~s:0.5:1:1:2", "r35": "Fagiolini all'olio|Fagiolini~g:80:100:120:200,Olio EVO~s:4:5:5:7", "r36": "Insalata verde e carote|Insalata~o:15:17:20:25,Carote~o:20:22:25:30,Olio EVO~s:4:5:5:7,Aceto di mele~s:0.5:1:1:2", "r37": "Patate al forno|Patate~o:100:120:130:170,Olio EVO~s:4:5:5:7", "r38": "Carote al forno|Carote~g:80:100:120:200,Olio EVO~s:4:5:5:7", "r39": "Carote a julienne|Carote~o:80:90:100:150,Olio EVO~s:4:5:5:7,Aceto di mele~s:0.5:1:1:2", "r40": "Cruditè di carote e finocchi|Finocchi~o:40:45:50:75,Carote~o:40:45:50:75,Olio EVO~s:4:5:5:7,Aceto di mele~s:0.5:1:1:2", "r41": "Finocchi gratinati|Finocchi~o:80:100:120:200,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7", "r42": "Spinaci al forno|Spinaci~g:80:100:120:200,Olio EVO~s:4:5:5:7", "r43": "Purè di patate|Patate~o:120:135:150:200,Latte UHT~f:15:17:20:25,Parmigiano~f:6:7:8:10", "r44": "Budino vaniglia o cioccolato|Budino~f:100:100:100:100", "r45": "Yogurt alla frutta|Yogurt alla frutta~f:125:125:125:125", "r46": "Frutta fresca di stagione|Frutta di stagione~o:80:100:120:150", "r47": "Mousse di frutta|Mousse di frutta (monoporzione)~f:100:100:100:100", "r48": "Torta margherita|Farina~s:35:40:40:45,Uova~f:18:20:20:25,Latte UHT~f:18:20:20:25,Zucchero~s:10:12:12:15,Lievito~s:1:2:2:3,Olio di semi~s:6:7:8:10", "r49": "Torta di carote|Farina~s:35:40:40:45,Carote~o:15:18:18:20,Uova~f:15:18:18:20,Latte UHT~f:15:18:18:20,Zucchero~s:8:10:10:12,Lievito~s:1:2:2:3,Olio di semi~s:6:7:8:10", "r50": "Torta allo yogurt|Farina~s:35:40:45:50,Yogurt alla frutta~f:12:15:15:18,Uova~f:15:18:18:20,Latte UHT~f:15:18:18:20,Zucchero~s:8:10:10:12,Lievito~s:1:2:2:3,Olio di semi~s:6:7:8:10", "r51": "Pane di semola di grano duro|Pane comune~s:30:30:30:50", "rz": "Risotto allo zafferano (derivato dal riso alla barbabietola: da verificare)|Riso~s:60:65:70:80,Parmigiano~f:4:4:5:7,Olio EVO~s:4:5:5:7,Cipolle~o:3:3:3:3,Sedano~o:3:3:3:3,Carote~o:3:3:3:3,Zafferano~s:.05:.06:.06:.07"};
+const D={"1": {"b": [["rz", "r28", "r39", "r51", "r46"], ["r03", "r26", "r34", "r51", "r46"], ["r00", "r23", "r35", "r51", "r45"], ["r05", "r20", "r43", "r51", "r46"], ["r12", "r27#p", "r40", "r51", "r44"]], "a": [["rz*0.5", "?Pasta al sugo di salsiccia", "?Verdure ripiene", "?Totani* gratinati", "?Patate* paprika e curry", "Verdura cruda~o:80", "r51"], ["r03*0.5", "?Tagliatelle ai funghi*", "?Involtini di prosciutto cotto e formaggio", "r26*0.5", "r42", "Verdura cruda~o:80", "r51"], ["r00*0.5", "?Spaghetti aglio olio e peperoncino", "r23*0.5", "?Spiedini* di carne", "r35", "Verdura cruda~o:80", "r51"], ["r05*0.5", "?Pasta all'arrabbiata", "r20*0.5", "r16*0.5", "r43", "Verdura cruda~o:80", "r51"], ["r12*0.5", "?Riso e lenticchie", "?Parmigiana di melanzane*", "?Affettati del giorno", "?Zucchine* al forno", "Verdura cruda~o:80", "r51"]]}, "2": {"b": [["r02", "r33", "r38", "r51", "r46"], ["r06", "r27", "r36", "r51", "r47"], ["r04", "r21", "r35", "r51", "r46"], ["r07", "r25", "r37", "r51", "r46"], ["r10", "r16", "r41", "r51", "r46"]], "a": [["?Ravioli di magro burro e salvia", "r00*0.5", "r33*0.5", "?Bruscitt di carne con polenta", "?Piselli* in umido", "Verdura cruda~o:80", "r51"], ["r06*0.5", "?Pasta e peperoni", "?Merluzzo* in crosta di patate", "?Verdure ripiene", "r38", "Verdura cruda~o:80", "r51"], ["r04*0.5", "?Pasta in crema di broccoli*", "r21*0.5", "?Spiedini* di carne", "r35", "Verdura cruda~o:80", "r51"], ["r07*0.5", "?Pizzoccheri", "r25*0.5", "?Omelette", "r37", "Verdura cruda~o:80", "r51"], ["r10*0.5", "r00*0.5", "r16*0.5", "?Tortino* salato ricotta e spinaci", "r41", "Verdura cruda~o:80", "r51"]]}, "3": {"b": [["r11", "r29", "r38", "r51", "r46"], ["r08", "r30", "r34", "r51", "r45"], ["r05", "r24", "r43", "r51", "r46"], ["r12", "r27#p", "r40", "r51", "r46"], ["r00", "r17", "r35", "r51", "r46"]], "a": [["r04*0.5", "?Orecchiette con cime di rapa", "?Cotoletta di lonza", "?Parmigiana di melanzane*", "?Erbette* al formaggio", "Verdura cruda~o:80", "r51"], ["r08*0.5", "?Pasta al ragù di pesce*", "r30*0.5", "?Brasato e polenta", "?Carote* e piselli* in umido", "Verdura cruda~o:80", "r51"], ["r05*0.5", "?Pasta al ragù di carne", "r24*0.5", "?Totani* gratinati", "r43", "Verdura cruda~o:80", "r51"], ["r12*0.5", "?Pasta alla carbonara", "?Pesce spada* capperi e olive", "?Scaloppine di pollo al vino bianco", "?Peperoni* al forno", "Verdura cruda~o:80", "r51"], ["r00*0.5", "?Riso e piselli*", "r17*0.5", "?Affettati del giorno", "r35", "Verdura cruda~o:80", "r51"]]}, "4": {"b": [["r09", "r18", "r42", "r51", "r46"], ["r00#i", "r01#p", "r19", "r38", "r51", "r46"], ["r13", "r22", "r36", "r51", "r48"], ["r15", "r32", "r37", "r51", "r46"], ["r14", "r31", "r35", "r51", "r46"]], "a": [["?Pasta allo speck, zafferano e zucchine", "?Risotto in crema di formaggi", "r18*0.5", "?Merluzzo* alla mediterranea", "r42", "Verdura cruda~o:80", "r51"], ["r01*0.5", "?Pasta all'amatriciana", "r19*0.5", "?Verdure ripiene", "r38", "Verdura cruda~o:80", "r51"], ["r13*0.5", "?Pasta cannellini e rosmarino", "r22*0.5", "?Petto di pollo alla pizzaiola", "r41", "Verdura cruda~o:80", "r51"], ["r15*0.5", "?Pasta in crema di broccoli*", "r32*0.5", "r16*0.5", "r37", "Verdura cruda~o:80", "r51"], ["r14*0.5", "?Ravioli di magro burro e salvia", "r31*0.5", "?Spezzatino di tacchino", "r35", "Verdura cruda~o:80", "r51"]]}};
+function exp(wk,k,d){const o=[],gI=+nI.value,gP=+nP.value,gQ=+nQ.value,nT=gI+gP+gQ;D[wk][k][d].forEach(x=>{
+ if(x[0]=="?")return;const [a,fl]=x.split("#"),al=fl===undefined?"ipa":fl,[id,mu]=a.split("*"),f=mu?+mu:1;
+ if(R[id]){const [t,sx]=R[id].split("|");sx.split(",").forEach(e=>{const [n,a1,a2,a3,a4]=e.split(":"),[nm,c]=n.split("~");
+  if(k=="b"){const tt=(al.includes("i")?gI*a1:0)+(al.includes("p")?gP*a2+gQ*a3:0);o.push([nm,c,nT?tt*f/nT:0,t,[+a1,+a2,+a3]])}
+  else if(al.includes("a"))o.push([nm,c,+a4*f,t])})}
+ else{const [n,g]=a.split(":"),[nm,c]=n.split("~");o.push([nm,c,+g,"stima"])}});return o}
+function manc(wk,d){return D[wk].a[d].filter(x=>x[0]=="?").map(x=>x.slice(1))}
 const G=["Lun","Mar","Mer","Gio","Ven"],C={s:"Secco e pane",f:"Fresco",g:"Surgelato",o:"Ortofrutta"};
 const P={m3:[[0,3],[0,4]],m5:[[1,0],[1,1],[1,2]],o1:[[0,1],[0,2],[0,3]],o4:[[0,4],[1,0]]};
 // settimana corrente dal calendario (1ª sett. = lun 5/10/2026)
-const sw=Math.floor((Date.now()-new Date(2026,9,5))/6048e5);
+const sw=Math.floor((Date.now()-new Date(2026,10,16))/6048e5);
 w.value=((sw%4)+4)%4+1;
 let txt="";
 function kg(g){return g>=1000?(g/1000).toFixed(2).replace(".",",")+" kg":Math.round(g)+" g"}
 function run(){
- let pasti=0;const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[],byDay=[];
+ let pasti=0;const mc=[];const t=P[o.value],oo=o.value[0]=="o",tot={},miss=[],days=[],byDay=[];
  t.forEach(([off,d])=>{
   const wk=(+w.value-1+off)%4+1,m=D[wk];
   if(!m){miss.push(G[d]+" (sett. "+wk+")");return}
   days.push(G[d]+" s."+wk);const dd={};byDay.push([G[d]+" (sett. "+wk+")",dd]);
-  const na=(d==2||d==4)?+n2.value:+n1.value;pasti+=+nb.value+na;
+  const na=(d==2||d==4)?+n2.value:+n1.value;pasti+=+nb.value+na;mc.push(...manc(wk,d));
   [["b",+nb.value],["a",na]].forEach(([k,n])=>exp(wk,k,d).forEach(([nm,c,g],i)=>{
    if((c=="o")!=oo)return;
    const ov=+OV[wk+"|"+k+"|"+d+"|"+i];if(ov>0)g=ov;
@@ -197,54 +119,15 @@ function run(){
  const eur=Object.keys(tot).reduce((a,k)=>a+tot[k]/1000*PZ(k.slice(2)),0),bg=+bud.value||0,pp=pasti?eur/pasti:0;
  h="<div class='cd'><b>Totale stimato: "+eu(eur)+"</b><br><span class='n'>"+pasti+" pasti coperti · "+eu(pp)+" a pasto per questa parte di spesa (budget totale "+eu(bg)+")</span></div>"+h;
  last={l:o.options[o.selectedIndex].text,e:eur,p:pasti,r:Object.keys(tot).map(k=>[k.slice(2),k[0],Math.round(tot[k]),tot[k]/1000*PZ(k.slice(2))])};
+ if(mc.length)h="<div class='cd' style='border-color:#e0a100'><b>⚠ Adulti: piatti senza ricetta (non contati)</b><div class='n'>"+[...new Set(mc)].join(" · ")+"</div></div>"+h;
  out.innerHTML=h;nfStat();rcBuild()}
 function copia(){navigator.clipboard&&navigator.clipboard.writeText(txt)}
-const MN={
-1:{b:["Pasta in salsa aurora (pomodoro e besciamella)|Uova strapazzate|Erbette*|Pane bianco|Frutta fresca di stagione",
-"Riso allo zafferano|Tortino/sformato vegetale (con verdure* e piselli*)|Carote a julienne|Pane integrale|Frutta fresca di stagione",
-"Pasta agli aromi|Platessa* olio e limone (a rotazione)|Insalata verde|Pane bianco|Yogurt alla frutta",
-"Vellutata di verdure* e legumi con farro|Petto di pollo agli aromi (infanzia) / Fusi di pollo agli aromi (primaria)|Patate*|Pane integrale|Frutta fresca di stagione",
-"Pasta integrale con crema di pomodoro e peperone*|Provolone dolce|Fagiolini*|Pane bianco|Frutta fresca di stagione"],
-a:["Pasta fredda|Spaghetti aglio, olio e prezzemolo|Frittata ai carciofi*|Braciola burro e salvia|Peperoni*",
-"Pizza margherita|Pasta alla puttanesca|Hamburger* con cipolla e formaggio|Insalatona (carote, insalata, pomodori, tonno, fagioli cannellini)|Patate* lesse",
-"Risotto allo zafferano|Strudel* con i funghi|Fagiolini*",
-"Pasta pomodorini cotti e basilico|Spaghetti alla carbonara|Totani* al gratin|Tacchino tonnato|Zucchine* gratinate",
-"Pasta al salmone*|Polpette di legumi in umido (lenticchie)|Misto di verdure* cotte"]},
-2:{b:["Riso alla barbabietola|Mozzarella|Pomodori|Pane bianco|Frutta fresca di stagione",
-"Pasta al pomodoro|Crocchette di patate*, melanzane e ceci|Insalata e mais|Pane integrale|Frutta fresca di stagione",
-"Lasagne* alla bolognese (ragù di bovino e besciamella)|Fagiolini* e carote*|Pane integrale|Gelato*",
-"Vellutata di carote* e ceci con orzo|Bocconcini di tacchino gratinati|Patate*|Pane integrale|Frutta fresca di stagione",
-"Pasta integrale al pesto|Merluzzo* gratinato|Carote a julienne|Pane bianco|Frutta fresca di stagione"],
-a:["Pasta al pesto di rucola|Risotto ai formaggi|Merluzzo* in crosta|Arrosto di suino alla senape|Carote* al burro",
-"Insalata di riso|Pasta al pesto|Gateau di patate*|Bocconcini di tacchino al limone|Spinaci*",
-"Lasagne alla bolognese (ragù di bovino e besciamella)|Fagiolini* e carote*",
-"Pasta in crema di peperoni|Risotto radicchio e gorgonzola|Spada* pomodoro e olive|Fusi di pollo al forno|Patate*",
-"Risotto alle zucchine*|Parmigiana di melanzane*|Finocchi* gratinati"]},
-3:{b:["Pasta al ragù di pesce*|Frittata|Fagiolini*|Pane bianco|Frutta fresca di stagione",
-"Pizza margherita|Insalata e pomodori (da settembre vellutata di verdure*, legumi e 1/2 porz. di crostini)|Barretta di cioccolato fondente equosolidale",
-"Riso olio e parmigiano|Polpette di pesce* (merluzzo*)|Misto di verdure* cotte al forno (carote, zucchine* e patate*)|Pane bianco|Frutta fresca di stagione",
-"Pasta al sugo di zucchine* e zafferano|Cotoletta di pollo|Pomodori|Pane integrale|Frutta fresca di stagione",
-"Pasta integrale al pomodoro|Crocchette di patate* e piselli*|Carote a julienne|Pane integrale|Frutta fresca di stagione"],
-a:["Fusilli tonno olive e capperi|Risotto salsiccia e timo|Speck brie/taleggio|Platessa* impanata|Zucchine* trifolate",
-"Gnocchi alla sorrentina|Pizza margherita|Tacchino tonnato|Verdure ripiene al forno|Carote* e piselli*",
-"Pasta all'ortolana|Merluzzo* gratinato|Fagiolini* in insalata",
-"Pasta alla gricia|Pasta zucchine* e gamberetti*|Cotoletta di pollo|Insalatona (carote, insalata, pomodori, mozzarella e fagiolini)|Patate al forno",
-"Pasta pomodoro|Tortino radicchio e scamorza|Misto di verdure* cotte"]},
-4:{b:["Pasta al ragù di lenticchie (infanzia) / Pasta e lenticchie (primaria)|Stracchino / mozzarella a rotazione|Spinaci*|Pane bianco|Frutta fresca di stagione",
-"Pasta alla mimosa (besciamella e zafferano)|Rollè di uova|Carote a julienne|Pane integrale|Frutta fresca di stagione",
-"Ravioli di magro olio e salvia|Totani* gratinati|Insalata e mais|Pane integrale|Torta del centro cottura",
-"Riso primavera alle verdure*|Prosciutto cotto / polpette di carne a rotazione|Pomodori e cannellini|Pane integrale|Frutta fresca di stagione",
-"Pasta integrale pomodoro e melanzane|Platessa* impanata|Fagiolini*|Pane bianco|Frutta fresca di stagione"],
-a:["Pasta alla norma|Risotto radicchio e taleggio|Braciola di suino ai ferri|Insalatona (carote, insalata verde, pomodori, mozzarella)|Peperoni*",
-"Fusilli tonno olive e capperi|Pasta pomodorini cotti e basilico|Verdure ripiene al forno|Speck e taleggio|Fagiolini*",
-"Pasta al sugo di zucchine*|Erbazzone|Insalata mista (pomodori, olive, carote e mais)",
-"Insalata di riso|Pasta al salmone*|Pollo al forno|Insalatona (carote, insalata verde, pomodori, mozzarella, tonno)|Patate*",
-"Ravioli di magro|Totani* al gratin|Carote* al forno"]}};
+const MN={"1": {"b": ["Risotto allo zafferano|Formaggio quick|Carote julienne|Pane|Frutta fresca", "Pasta al ragù di verdure*|Merluzzo* gratinato|Insalata verde|Pane|Frutta fresca", "Pasta al pomodoro|Frittata ricotta e zucchine*|Fagiolini* all'olio|Pane|Yogurt alla frutta", "Passato* di fagioli cannellini con pasta|Bocconcini di pollo gratinati|Purè di patate|Pane|Frutta fresca", "Infanzia: pizza con parmigiano; primaria: pizza margherita|Mozzarella ½ porzione (primaria)|Crudité di carote e finocchi|Pane|Budino vaniglia/cioccolato"], "a": ["Risotto allo zafferano|Pasta al sugo di salsiccia|Verdure ripiene|Totani* gratinati|Patate* paprika e curry", "Pasta al ragù di verdure*|Tagliatelle ai funghi*|Involtini di prosciutto cotto e formaggio|Merluzzo* gratinato|Spinaci* al forno", "Pasta al pomodoro|Spaghetti aglio olio e peperoncino|Frittata ricotta e zucchine*|Spiedini* di carne|Fagiolini* all'olio", "Passato* di fagioli cannellini con pasta|Pasta all'arrabbiata|Bocconcini di pollo gratinati|Platessa* impanata|Purè di patate", "Pizza margherita|Riso e lenticchie|Parmigiana di melanzane*|Affettati del giorno|Zucchine* al forno"]}, "2": {"b": ["Pasta agli aromi|Tonno, uovo sodo, maionese|Carote* brasate|Pane|Frutta fresca", "Lasagna* al ragù di vitellone|Mozzarella ½ porzione|Insalata mista|Pane|Mousse di frutta", "Risotto alla zucca*|Provolone dolce DOP|Fagiolini* all'olio|Pane|Frutta fresca", "Crema* di ceci con pasta|Arrosto di tacchino al limone|Patate* al forno|Pane|Frutta fresca", "Passato di verdure* con ditali|Platessa* impanata|Finocchi* gratinati|Pane|Frutta fresca"], "a": ["Ravioli di magro burro e salvia|Spaghetti al pomodoro|Tonno uovo sodo maionese|Bruscitt di carne con polenta|Piselli* in umido", "Lasagne* al ragù bovino|Pasta e peperoni|Merluzzo* in crosta di patate|Verdure ripiene|Carote* al forno", "Risotto alla zucca*|Pasta in crema di broccoli*|Provolone dolce|Spiedini* di carne|Fagiolini* all'olio", "Crema* di ceci con pasta|Pizzoccheri|Arrosto di tacchino al limone|Omelette|Patate* al forno", "Passato di verdure* con ditali|Pasta al pomodoro|Platessa* impanata|Tortino* salato ricotta e spinaci|Finocchi* gratinati"]}, "3": {"b": ["Passato di zucchine* e cavolfiori* con pasta|Prosciutto cotto|Carote* brasate|Pane|Frutta fresca", "Ravioli di carne al pomodoro|Frittata e formaggio|Insalata verde|Pane|Yogurt alla frutta", "Passato* di fagioli cannellini con pasta|Hamburger di manzo|Purè di patate|Pane|Frutta fresca", "Infanzia: pizza rossa; primaria: pizza margherita|Mozzarella ½ porzione (primaria)|Crudité di carote e finocchi|Pane|Frutta fresca", "Pasta pomodoro|Hamburger di merluzzo* agli agrumi|Fagiolini* all'olio|Pane|Frutta fresca"], "a": ["Risotto alla zucca*|Orecchiette con cime di rapa|Cotoletta di lonza|Parmigiana di melanzane*|Erbette* al formaggio", "Ravioli di carne al pomodoro|Pasta al ragù di pesce*|Frittata e formaggio|Brasato e polenta|Carote* e piselli* in umido", "Passato* di fagioli cannellini con pasta|Pasta al ragù di carne|Hamburger* di manzo|Totani* gratinati|Purè di patate", "Pizza margherita|Pasta alla carbonara|Pesce spada* capperi e olive|Scaloppine di pollo al vino bianco|Peperoni* al forno", "Pasta al pomodoro|Riso e piselli*|Hamburger di merluzzo* agli agrumi|Affettati del giorno|Fagiolini* all'olio"]}, "4": {"b": ["Pasta alla mimosa|Frittata alle erbe aromatiche|Spinaci*|Pane|Frutta fresca", "Infanzia: pasta al pomodoro|Primaria: gnocchi al pomodoro|Cotoletta di pollo|Carote* brasate|Pane|Frutta fresca", "Riso alla barbabietola|Primo sale|Insalata mista (verde e carote)|Pane|Torta", "Pasta pomodoro e lenticchie|Arrosto di lonza|Patate* al forno|Pane|Frutta fresca", "Gnocchetti sardi con ragù di tonno|Crocchette di patate* e formaggio (provolone)|Fagiolini* all'olio|Pane|Frutta fresca"], "a": ["Pasta allo speck, zafferano e zucchine|Risotto in crema di formaggi|Frittata alle erbe aromatiche|Merluzzo* alla mediterranea|Spinaci*", "Gnocchi al pomodoro|Pasta all'amatriciana|Cotoletta di pollo|Verdure ripiene|Carote* al forno", "Risotto alla barbabietola|Pasta cannellini e rosmarino|Primo sale|Petto di pollo alla pizzaiola|Finocchi* gratinati", "Pasta pomodoro e lenticchie|Pasta in crema di broccoli*|Arrosto di lonza|Platessa* impanata|Patate* al forno", "Gnocchetti sardi con ragù di tonno|Ravioli di magro burro e salvia|Crocchette di patate* e formaggio (provolone)|Spezzatino di tacchino|Fagiolini* all'olio"]}};
 function buildMn(){
  const x=MN[mw.value][mk.value],N=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì"];let h="";
  x.forEach((d,i)=>{h+="<h2>"+N[i]+"</h2>";(d+(mk.value=="a"?"|Verdura cruda di stagione|Pane":"")).split("|").forEach(l=>h+="<div>"+l+"</div>")});
  mn.innerHTML=h+"<p class='n'>* Il prodotto potrebbe essere surgelato/congelato all'origine. Pane a ridotto contenuto di sale, olio bio EVO. Allergeni: vedi il PDF originale.</p>"}
-const DP={};"Farro:3,Minestrone surgelato:1.9,Lenticchie:2.8,Patate:1.2,Parmigiano:14,Olio EVO:8,Pasta di semola:1.2,Zucchine:2.2,Cipolle:1.2,Zafferano:6000,Pasta integrale:1.4,Pomodori pelati:1.3,Melanzane:2.3,Pizza:3.5,Riso:1.7,Barbabietole cotte:2.5,Sedano:1.8,Carote:1.3,Pane semintegrale:3.5,Pane comune:3.2,Torta da forno:5,Barretta cioccolato equo:14,Frutta di stagione:1.8,Spinaci:2.3,Insalata:3,Pomodori freschi:2.5,Aceto di mele:2,Erbette/bietole:2.3,Fagiolini:2.8,Fagioli cannellini:3,Mais:3.5,Uova:3.5,Piselli:2.5,Provolone dolce:9,Pane grattugiato:2.2,Platessa:8.5,Limoni:2.5,Latte UHT:1.1,Farina 0:1,Ravioli di magro:6,Pasta all'uovo:4.5,Bovino macinato:8.5,Orzo perlato:2.2,Ceci:2.8,Peperoni:2.8,Basilico:12,Pinoli:60,Merluzzo:9.5,Totani:8,Pollo petto:7.5,Tacchino:8.5,Pollo coscia/fuso:4.5,Mozzarella:7,Stracchino:7,Prosciutto cotto:11,Yogurt alla frutta:2.8,Gelato:6,Carciofi:5.5,Suino braciola:6.5,Suino arrosto:6.5,Hamburger:7,Formaggio:8,Tonno:11,Pomodorini:3.5,Guanciale:11,Salmone:15,Polpette di legumi:6,Strudel ai funghi:7,Pesto:9,Radicchio:3.5,Gorgonzola:9,Pesce spada:16,Finocchi:1.8,Salsiccia:8,Speck:15,Gnocchi:3,Verdure ripiene:6,Carote e piselli:2.2,Misto verdure:2.2,Gamberetti:14,Tortino radicchio e scamorza:7,Taleggio:9,Erbazzone:6,Carote al forno:1.3,Verdura cruda:2".split(",").forEach(e=>{const i=e.lastIndexOf(":");DP[e.slice(0,i)]=+e.slice(i+1)});
+const DP={};"Farro:3,Minestrone surgelato:1.9,Lenticchie:2.8,Patate:1.2,Parmigiano:14,Olio EVO:8,Pasta di semola:1.2,Zucchine:2.2,Cipolle:1.2,Zafferano:6000,Pasta integrale:1.4,Pomodori pelati:1.3,Melanzane:2.3,Pizza:3.5,Riso:1.7,Barbabietole cotte:2.5,Sedano:1.8,Carote:1.3,Pane semintegrale:3.5,Pane comune:3.2,Torta da forno:5,Barretta cioccolato equo:14,Frutta di stagione:1.8,Spinaci:2.3,Insalata:3,Pomodori freschi:2.5,Aceto di mele:2,Erbette/bietole:2.3,Fagiolini:2.8,Fagioli cannellini:3,Mais:3.5,Uova:3.5,Piselli:2.5,Provolone dolce:9,Pane grattugiato:2.2,Platessa:8.5,Limoni:2.5,Latte UHT:1.1,Farina 0:1,Ravioli di magro:6,Pasta all'uovo:4.5,Bovino macinato:8.5,Orzo perlato:2.2,Ceci:2.8,Peperoni:2.8,Basilico:12,Pinoli:60,Merluzzo:9.5,Totani:8,Pollo petto:7.5,Tacchino:8.5,Pollo coscia/fuso:4.5,Mozzarella:7,Stracchino:7,Prosciutto cotto:11,Yogurt alla frutta:2.8,Gelato:6,Carciofi:5.5,Suino braciola:6.5,Suino arrosto:6.5,Hamburger:7,Formaggio:8,Tonno:11,Pomodorini:3.5,Guanciale:11,Salmone:15,Polpette di legumi:6,Strudel ai funghi:7,Pesto:9,Radicchio:3.5,Gorgonzola:9,Pesce spada:16,Finocchi:1.8,Salsiccia:8,Speck:15,Gnocchi:3,Verdure ripiene:6,Carote e piselli:2.2,Misto verdure:2.2,Gamberetti:14,Tortino radicchio e scamorza:7,Taleggio:9,Erbazzone:6,Carote al forno:1.3,Verdura cruda:2,Vitellone macinato:9,Besciamella:2.5,Brodo vegetale:3,Budino:2.5,Cavolfiori:2,Farina:1,Formaggio spalmabile:7,Gnocchetti sardi:2.5,Lonza di suino:7,Lievito:8,Maionese:5,Olio di semi:2.5,Primosale:8,Ricotta:5,Zucca:1.5,Zucchero:1.2,Agrumi:2.2,Pasta ripiena:6,Mousse di frutta (monoporzione):4".split(",").forEach(e=>{const i=e.lastIndexOf(":");DP[e.slice(0,i)]=+e.slice(i+1)});
 let PRZ={},ST=[],last=null;try{PRZ=JSON.parse(localStorage.getItem("pz")||"{}");ST=JSON.parse(localStorage.getItem("st")||"[]");bud.value=localStorage.getItem("bd")||"2.5"}catch(e){}
 function PZ(n){const v=PRZ[n];return v!==undefined&&v!==""?+v:(DP[n]!==undefined?DP[n]:5)}
 function eu(x){return (x||0).toFixed(2).replace(".",",")+" €"}
@@ -261,8 +144,8 @@ function stBuild(){const m=today().slice(0,7);let e=0,p=0;ST.forEach(x=>{if(x.d.
 function stDel(i){if(confirm("Eliminare questo ordine dallo storico?")){ST.splice(i,1);stSave();stBuild()}}
 function fatto(){if(!last||!last.r.length)return;if(!confirm("Registrare questo ordine ("+eu(last.e)+")?"))return;ST.unshift({d:today(),l:last.l,e:last.e,p:o.value[0]=="m"?last.p:0,r:last.r});stSave();stBuild()}
 function nfFatto(){if(!nfR.length)return;if(!confirm("Registrare l'ordine no food?"))return;ST.unshift({d:today(),l:"No food",e:nfR.reduce((a,r)=>a+r[3],0),p:0,r:nfR.map(r=>[r[0],"n",r[2],r[3]])});stSave();stBuild()}
-function bkCopia(){const t=JSON.stringify({ov2:OV,nf:NF,pz:PRZ,st:ST,bd:bud.value});navigator.clipboard&&navigator.clipboard.writeText(t)}
-function bkRip(){const t=prompt("Incolla qui il backup");if(!t)return;try{const x=JSON.parse(t);const S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));S("ov2",x.ov2||{});S("nf",x.nf||null);S("pz",x.pz||{});S("st",x.st||[]);localStorage.setItem("bd",x.bd||"2.5");location.reload()}catch(e){alert("Backup non valido")}}
+function bkCopia(){const t=JSON.stringify({ov3:OV,nf:NF,pz:PRZ,st:ST,bd:bud.value});navigator.clipboard&&navigator.clipboard.writeText(t)}
+function bkRip(){const t=prompt("Incolla qui il backup");if(!t)return;try{const x=JSON.parse(t);const S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));S("ov3",x.ov3||{});S("nf",x.nf||null);S("pz",x.pz||{});S("st",x.st||[]);localStorage.setItem("bd",x.bd||"2.5");location.reload()}catch(e){alert("Backup non valido")}}
 const NF0=[["Tovagliette di carta","p",1,500,6],["Tovaglioli","p",1,1000,8],["Detersivo piatti (L)","s",3,5,12],["Sgrassatore (L)","s",2,5,14],["Sacchi spazzatura (pz)","s",100,100,8],["Guanti monouso (pz)","s",300,100,4],["Carta (rotoli)","s",10,6,9]];
 let NF=[],txtNF="",nfR=[];try{NF=JSON.parse(localStorage.getItem("nf")||"null")}catch(e){}
 if(!NF)NF=NF0.map(([n,t,c,k,pc])=>({n,t,c,k,pc,s:"",o:10}));
@@ -287,23 +170,28 @@ function go(t){document.querySelectorAll("main>section").forEach(x=>x.hidden=x.i
 function fm(x){return String(+x.toFixed(2)).replace(".",",")}
 function rcBuild(){const wk=rw.value,d=+rd.value,na=(d==2||d==4)?+n2.value:+n1.value;let h="";
  [["b","Bambini",+nb.value],["a","Adulti",na]].forEach(([k,t,n])=>{h+="<h2>"+t+" · "+n+" pasti</h2>";const g={};
-  exp(wk,k,d).forEach(([nm,c,gr,tt],i)=>{const ov=+OV[wk+"|"+k+"|"+d+"|"+i],x=ov>0?ov:gr;(g[tt]=g[tt]||[]).push([nm,x])});
-  Object.keys(g).forEach(tt=>{h+="<div class='cd'><b>"+(tt=="stima"?"Altro (stime)":tt)+"</b><table>"+g[tt].map(([nm,x])=>"<tr><td>"+nm+" <small style='color:var(--mu)'>"+fm(x)+" g × "+n+"</small></td><td>"+kg(x*n)+"</td></tr>").join("")+"</table></div>"})});
+  exp(wk,k,d).forEach(([nm,c,gr,tt,gs],i)=>{const ov=+OV[wk+"|"+k+"|"+d+"|"+i],x=ov>0?ov:gr;(g[tt]=g[tt]||[]).push([nm,x,ov>0?null:gs])});
+  Object.keys(g).forEach(tt=>{h+="<div class='cd'><b>"+(tt=="stima"?"Altro (stime)":tt)+"</b><table>"+g[tt].map(([nm,x,gs])=>"<tr><td>"+nm+" <small style='color:var(--mu)'>"+(gs&&k=="b"?gs.join(" / ")+" g":fm(x)+" g × "+n)+"</small></td><td>"+kg(x*n)+"</td></tr>").join("")+"</table></div>"})});
+ const mm=manc(wk,d);if(mm.length)h+="<div class='cd' style='border-color:#e0a100'><b>⚠ Adulti: piatti senza ricetta</b><div class='n'>"+mm.join(" · ")+"</div></div>";
  rc.innerHTML=h}
-let OV={};try{OV=JSON.parse(localStorage.getItem("ov2")||"{}")}catch(e){}
+let OV={};try{OV=JSON.parse(localStorage.getItem("ov3")||"{}")}catch(e){}
 function buildGr(){
  const m=D[gw.value],d=+gd.value;let h="";
  [["b","Bambini (g a porzione)"],["a","Adulti (g a porzione)"]].forEach(([k,t])=>{
   h+="<h2>"+t+"</h2><table>";
   if(!m){h+="<tr><td>Menù non inserito</td></tr>"}else exp(gw.value,k,d).forEach(([n,c,g,t],i)=>{
    const key=gw.value+"|"+k+"|"+d+"|"+i;
-   h+="<tr><td>"+n+" <small style='color:var(--mu)'>"+t+"</small></td><td><input type=number inputmode=decimal data-k=\""+key+"\" placeholder=\""+g+"\" value=\""+(OV[key]||"")+"\"></td></tr>"});
+   h+="<tr><td>"+n+" <small style='color:var(--mu)'>"+t+"</small></td><td><input type=number inputmode=decimal data-k=\""+key+"\" placeholder=\""+fm(g)+"\" value=\""+(OV[key]||"")+"\"></td></tr>"});
   h+="</table>"});
  gr.innerHTML=h;
  gr.querySelectorAll("input").forEach(e=>e.oninput=()=>{
   const v=+e.value;if(v>0)OV[e.dataset.k]=v;else delete OV[e.dataset.k];
-  try{localStorage.setItem("ov2",JSON.stringify(OV))}catch(x){}run()})}
-[o,w,nb,n1,n2,so].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;mw.value=w.value;mw.onchange=mk.onchange=buildMn;buildMn();const dw=new Date().getDay();rw.value=w.value;rd.value=dw>=1&&dw<=5?dw-1:0;rw.onchange=rd.onchange=rcBuild;
+  try{localStorage.setItem("ov3",JSON.stringify(OV))}catch(x){}run()})}
+[o,w,so].forEach(e=>e.oninput=run);gw.value=w.value;gw.onchange=gd.onchange=buildGr;mw.value=w.value;mw.onchange=mk.onchange=buildMn;buildMn();const dw=new Date().getDay();rw.value=w.value;rd.value=dw>=1&&dw<=5?dw-1:0;rw.onchange=rd.onchange=rcBuild;
+const PSK=["nI","nP","nQ","n1","n2"];
+try{const p=JSON.parse(localStorage.getItem("ps")||"{}");PSK.forEach(k=>{if(p[k]!==undefined)document.getElementById(k).value=p[k]})}catch(e){}
+function psCh(){nb.value=(+nI.value)+(+nP.value)+(+nQ.value);try{localStorage.setItem("ps",JSON.stringify(Object.fromEntries(PSK.map(k=>[k,document.getElementById(k).value]))))}catch(e){}run()}
+PSK.forEach(k=>document.getElementById(k).oninput=psCh);nb.value=(+nI.value)+(+nP.value)+(+nQ.value);
 pzBuild();stBuild();nfBuild();buildGr();run();
 {const hs=(location.hash||"").slice(1);go(["ordini","ricette","menu","nofood","costi"].includes(hs)?hs:"ordini")}
 </script></body></html>
